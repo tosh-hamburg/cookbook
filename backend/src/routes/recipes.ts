@@ -12,6 +12,11 @@ const recipeInclude = {
       category: true
     }
   },
+  collections: {
+    include: {
+      collection: true
+    }
+  },
   user: {
     select: {
       id: true,
@@ -41,6 +46,10 @@ function transformRecipe(recipe: any) {
     weightUnit: recipe.weightUnit,
     sourceUrl: recipe.sourceUrl,
     categories: recipe.categories.map((rc: { category: { name: string } }) => rc.category.name),
+    collections: recipe.collections?.map((rc: { collection: { id: string; name: string } }) => ({
+      id: rc.collection.id,
+      name: rc.collection.name
+    })) || [],
     userId: recipe.userId,
     createdAt: recipe.createdAt.toISOString()
   };
@@ -55,12 +64,48 @@ function getIdParam(params: Record<string, unknown>): string {
   return id;
 }
 
-// Get all recipes
+// Get all recipes with optional filters
 router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const prisma: PrismaClient = req.app.locals.prisma;
+    
+    // Parse filter parameters
+    const { category, collection, search } = req.query;
+    
+    // Build where clause
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const where: any = {};
+    
+    // Filter by category
+    if (category && typeof category === 'string') {
+      where.categories = {
+        some: {
+          category: {
+            name: category
+          }
+        }
+      };
+    }
+    
+    // Filter by collection
+    if (collection && typeof collection === 'string') {
+      where.collections = {
+        some: {
+          collectionId: collection
+        }
+      };
+    }
+    
+    // Search in title
+    if (search && typeof search === 'string') {
+      where.title = {
+        contains: search,
+        mode: 'insensitive'
+      };
+    }
 
     const recipes = await prisma.recipe.findMany({
+      where,
       include: recipeInclude,
       orderBy: {
         createdAt: 'desc'

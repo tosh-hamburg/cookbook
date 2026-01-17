@@ -63,15 +63,43 @@ async function fetchApi<T>(
   return response.json();
 }
 
+// Auth API response types
+export interface LoginResponse {
+  token?: string;
+  user?: User;
+  requires2FA?: boolean;
+  userId?: string;
+  message?: string;
+}
+
+export interface TwoFactorSetupResponse {
+  secret: string;
+  qrCode: string;
+}
+
 // Auth API
 export const authApi = {
-  login: async (username: string, password: string): Promise<{ token: string; user: User }> => {
-    const result = await fetchApi<{ token: string; user: User }>('/auth/login', {
+  login: async (username: string, password: string, twoFactorCode?: string): Promise<LoginResponse> => {
+    const result = await fetchApi<LoginResponse>('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ username, password, twoFactorCode }),
     });
-    setToken(result.token);
-    setCurrentUserInStorage(result.user);
+    if (result.token && result.user) {
+      setToken(result.token);
+      setCurrentUserInStorage(result.user);
+    }
+    return result;
+  },
+
+  googleLogin: async (credential: string, twoFactorCode?: string): Promise<LoginResponse> => {
+    const result = await fetchApi<LoginResponse>('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ credential, twoFactorCode }),
+    });
+    if (result.token && result.user) {
+      setToken(result.token);
+      setCurrentUserInStorage(result.user);
+    }
     return result;
   },
 
@@ -89,12 +117,56 @@ export const authApi = {
       body: JSON.stringify({ username, password, role }),
     });
   },
+
+  // 2FA endpoints
+  setup2FA: async (): Promise<TwoFactorSetupResponse> => {
+    return fetchApi<TwoFactorSetupResponse>('/auth/2fa/setup', {
+      method: 'POST',
+    });
+  },
+
+  verify2FA: async (code: string): Promise<{ success: boolean; message: string }> => {
+    return fetchApi<{ success: boolean; message: string }>('/auth/2fa/verify', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    });
+  },
+
+  disable2FA: async (code?: string, password?: string): Promise<{ success: boolean; message: string }> => {
+    return fetchApi<{ success: boolean; message: string }>('/auth/2fa/disable', {
+      method: 'POST',
+      body: JSON.stringify({ code, password }),
+    });
+  },
+
+  get2FAStatus: async (): Promise<{ enabled: boolean }> => {
+    return fetchApi<{ enabled: boolean }>('/auth/2fa/status');
+  },
+
+  // Password management
+  changePassword: async (currentPassword: string | null, newPassword: string): Promise<{ success: boolean; message: string }> => {
+    return fetchApi<{ success: boolean; message: string }>('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+  },
 };
 
 // Recipes API
+export interface RecipeFilters {
+  category?: string;
+  collection?: string;
+  search?: string;
+}
+
 export const recipesApi = {
-  getAll: async (): Promise<Recipe[]> => {
-    return fetchApi<Recipe[]>('/recipes');
+  getAll: async (filters?: RecipeFilters): Promise<Recipe[]> => {
+    const params = new URLSearchParams();
+    if (filters?.category) params.append('category', filters.category);
+    if (filters?.collection) params.append('collection', filters.collection);
+    if (filters?.search) params.append('search', filters.search);
+    const queryString = params.toString();
+    return fetchApi<Recipe[]>(`/recipes${queryString ? `?${queryString}` : ''}`);
   },
 
   getById: async (id: string): Promise<Recipe> => {
@@ -137,6 +209,58 @@ export const categoriesApi = {
 
   delete: async (name: string): Promise<void> => {
     await fetchApi<{ message: string }>(`/categories/name/${encodeURIComponent(name)}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+// Collections API
+export interface Collection {
+  id: string;
+  name: string;
+  description: string | null;
+  recipeCount: number;
+  recipes?: Array<{ id: string; title: string; images: string[] }>;
+  createdAt: string;
+}
+
+export const collectionsApi = {
+  getAll: async (): Promise<Collection[]> => {
+    return fetchApi<Collection[]>('/collections');
+  },
+
+  getById: async (id: string): Promise<Collection> => {
+    return fetchApi<Collection>(`/collections/${id}`);
+  },
+
+  create: async (name: string, description?: string): Promise<Collection> => {
+    return fetchApi<Collection>('/collections', {
+      method: 'POST',
+      body: JSON.stringify({ name, description }),
+    });
+  },
+
+  update: async (id: string, data: { name?: string; description?: string }): Promise<Collection> => {
+    return fetchApi<Collection>(`/collections/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await fetchApi<{ message: string }>(`/collections/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  addRecipe: async (collectionId: string, recipeId: string): Promise<void> => {
+    await fetchApi<{ message: string }>(`/collections/${collectionId}/recipes/${recipeId}`, {
+      method: 'POST',
+    });
+  },
+
+  removeRecipe: async (collectionId: string, recipeId: string): Promise<void> => {
+    await fetchApi<{ message: string }>(`/collections/${collectionId}/recipes/${recipeId}`, {
       method: 'DELETE',
     });
   },

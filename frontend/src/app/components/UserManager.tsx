@@ -67,8 +67,13 @@ export function UserManager({ currentUser }: UserManagerProps) {
     const trimmedUsername = newUsername.trim();
     const trimmedPassword = newPassword.trim();
 
-    if (!trimmedUsername || !trimmedPassword) {
-      toast.error('Bitte füllen Sie alle Felder aus');
+    if (!trimmedUsername) {
+      toast.error('Bitte geben Sie einen Benutzernamen ein');
+      return;
+    }
+    
+    if (!trimmedPassword) {
+      toast.error('Bitte geben Sie ein Passwort ein');
       return;
     }
 
@@ -146,6 +151,7 @@ export function UserManager({ currentUser }: UserManagerProps) {
                   onChange={(e) => setNewUsername(e.target.value)}
                   placeholder="benutzername"
                   disabled={isCreating}
+                  autoComplete="off"
                 />
               </div>
               <div className="space-y-2">
@@ -157,6 +163,7 @@ export function UserManager({ currentUser }: UserManagerProps) {
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="••••••••"
                   disabled={isCreating}
+                  autoComplete="new-password"
                 />
               </div>
               <div className="space-y-2">

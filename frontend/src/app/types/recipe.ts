@@ -3,6 +3,11 @@ export interface Ingredient {
   amount: string;
 }
 
+export interface RecipeCollection {
+  id: string;
+  name: string;
+}
+
 export interface Recipe {
   id: string;
   title: string;
@@ -17,6 +22,7 @@ export interface Recipe {
   caloriesPerUnit: number;
   weightUnit: string; // z.B. "100g"
   categories: string[]; // Kategorien
+  collections?: RecipeCollection[]; // Sammlungen
   userId?: string; // Benutzer, der das Rezept erstellt hat
   createdAt: string;
   sourceUrl?: string; // URL der Quelle, wenn importiert

@@ -5,6 +5,7 @@ import { PrismaClient } from '@prisma/client';
 import authRoutes from './routes/auth';
 import recipesRoutes from './routes/recipes';
 import categoriesRoutes from './routes/categories';
+import collectionsRoutes from './routes/collections';
 import usersRoutes from './routes/users';
 import importRoutes from './routes/import';
 
@@ -26,6 +27,7 @@ app.locals.prisma = prisma;
 app.use('/api/auth', authRoutes);
 app.use('/api/recipes', recipesRoutes);
 app.use('/api/categories', categoriesRoutes);
+app.use('/api/collections', collectionsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/import', importRoutes);
 

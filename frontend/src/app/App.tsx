@@ -249,6 +249,11 @@ export default function App() {
                 onClose={handleBackToList}
                 onEdit={handleEdit}
                 onDelete={handleDeleteRecipe}
+                isAdmin={isAdmin}
+                onRecipeUpdate={(updatedRecipe) => {
+                  setSelectedRecipe(updatedRecipe);
+                  setRecipes(recipes.map(r => r.id === updatedRecipe.id ? updatedRecipe : r));
+                }}
               />
             )}
             

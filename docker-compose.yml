@@ -39,6 +39,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       PORT: ${BACKEND_PORT:-4002}
       NODE_ENV: ${NODE_ENV:-development}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
 
   frontend:
     image: node:20-slim

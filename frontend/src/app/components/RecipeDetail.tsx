@@ -1,4 +1,5 @@
-import { Clock, Flame, Pencil, Trash2, ChevronLeft, ChevronRight, ExternalLink, Users, Minus, Plus } from 'lucide-react';
+import { Clock, Flame, Pencil, Trash2, ChevronLeft, ChevronRight, ExternalLink, Users, Minus, Plus, ShoppingCart, Check } from 'lucide-react';
+import { toast } from 'sonner';
 import { useState, useMemo } from 'react';
 import type { Recipe, Ingredient } from '@/app/types/recipe';
 import { Button } from '@/app/components/ui/button';
@@ -106,6 +107,37 @@ export function RecipeDetail({ recipe, onClose, onEdit, onDelete }: RecipeDetail
   const handleDelete = () => {
     onDelete();
     setShowDeleteDialog(false);
+  };
+
+  // Send ingredients to Google Keep via Gemini
+  const sendToGoogleKeep = async () => {
+    // Format ingredients as a list
+    const ingredientsList = scaledIngredients
+      .map(ing => ing.amount ? `${ing.amount} ${ing.name}` : ing.name)
+      .join('\n');
+    
+    // Create Gemini prompt
+    const prompt = `Füge bitte folgende Zutaten zu meiner Einkaufsliste in Google Keep hinzu (erstelle die Liste "Einkaufsliste" falls sie nicht existiert):
+
+${recipe.title} (${currentServings} Portionen):
+${ingredientsList}`;
+    
+    try {
+      // Copy prompt to clipboard
+      await navigator.clipboard.writeText(prompt);
+      toast.success('Prompt in Zwischenablage kopiert!', {
+        description: 'Füge ihn in Gemini ein und sende ab.',
+      });
+      
+      // Open Gemini in new tab
+      window.open('https://gemini.google.com/app', '_blank');
+    } catch (err) {
+      // Fallback: Show prompt in alert if clipboard fails
+      toast.error('Konnte nicht in Zwischenablage kopieren', {
+        description: 'Bitte kopiere den Text manuell.',
+      });
+      console.error('Clipboard error:', err);
+    }
   };
 
   return (
@@ -218,8 +250,19 @@ export function RecipeDetail({ recipe, onClose, onEdit, onDelete }: RecipeDetail
       {/* Zutaten */}
       <Card className="mb-6">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Zutaten</CardTitle>
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-3">
+              <CardTitle>Zutaten</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={sendToGoogleKeep}
+                className="text-xs"
+              >
+                <ShoppingCart className="h-3 w-3 mr-1" />
+                An Einkaufsliste
+              </Button>
+            </div>
             <div className="flex items-center gap-3">
               <Button
                 variant="outline"

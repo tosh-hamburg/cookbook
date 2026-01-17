@@ -1,5 +1,6 @@
-import { Clock, Flame, Pencil, Trash2, ExternalLink, Users, Minus, Plus } from 'lucide-react';
+import { Clock, Flame, Pencil, Trash2, ExternalLink, Users, Minus, Plus, ShoppingCart, FolderPlus, X } from 'lucide-react';
 import Slider from 'react-slick';
+import { toast } from 'sonner';
 import type { Recipe, Ingredient } from '@/app/types/recipe';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
@@ -14,13 +15,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/app/components/ui/alert-dialog';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { collectionsApi, type Collection } from '@/app/services/api';
 
 interface RecipeDetailProps {
   recipe: Recipe;
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  isAdmin?: boolean;
+  onRecipeUpdate?: (recipe: Recipe) => void;
 }
 
 // Helper function to scale ingredient amounts
@@ -62,9 +66,68 @@ function scaleIngredientAmount(amount: string, factor: number): string {
   return result;
 }
 
-export function RecipeDetailWithCarousel({ recipe, onClose, onEdit, onDelete }: RecipeDetailProps) {
+export function RecipeDetailWithCarousel({ recipe, onClose, onEdit, onDelete, isAdmin, onRecipeUpdate }: RecipeDetailProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [currentServings, setCurrentServings] = useState(recipe.servings || 4);
+  const [availableCollections, setAvailableCollections] = useState<Collection[]>([]);
+  const [isLoadingCollections, setIsLoadingCollections] = useState(false);
+  const [showCollectionMenu, setShowCollectionMenu] = useState(false);
+  
+  // Load collections for admin users
+  useEffect(() => {
+    if (isAdmin) {
+      collectionsApi.getAll().then(setAvailableCollections).catch(console.error);
+    }
+  }, [isAdmin]);
+  
+  // Get collections this recipe is NOT in
+  const collectionsToAdd = availableCollections.filter(
+    col => !recipe.collections?.some(rc => rc.id === col.id)
+  );
+  
+  // Add recipe to a collection
+  const addToCollection = async (collectionId: string) => {
+    setIsLoadingCollections(true);
+    try {
+      await collectionsApi.addRecipe(collectionId, recipe.id);
+      const collection = availableCollections.find(c => c.id === collectionId);
+      toast.success(`Zu "${collection?.name}" hinzugefügt`);
+      // Update recipe with new collection
+      if (onRecipeUpdate) {
+        onRecipeUpdate({
+          ...recipe,
+          collections: [...(recipe.collections || []), { id: collectionId, name: collection?.name || '' }]
+        });
+      }
+    } catch (error) {
+      toast.error('Fehler beim Hinzufügen zur Sammlung');
+      console.error(error);
+    } finally {
+      setIsLoadingCollections(false);
+    }
+  };
+  
+  // Remove recipe from a collection
+  const removeFromCollection = async (collectionId: string) => {
+    setIsLoadingCollections(true);
+    try {
+      await collectionsApi.removeRecipe(collectionId, recipe.id);
+      const collection = recipe.collections?.find(c => c.id === collectionId);
+      toast.success(`Aus "${collection?.name}" entfernt`);
+      // Update recipe without this collection
+      if (onRecipeUpdate) {
+        onRecipeUpdate({
+          ...recipe,
+          collections: recipe.collections?.filter(c => c.id !== collectionId) || []
+        });
+      }
+    } catch (error) {
+      toast.error('Fehler beim Entfernen aus Sammlung');
+      console.error(error);
+    } finally {
+      setIsLoadingCollections(false);
+    }
+  };
   
   // Calculate the scaling factor
   const scaleFactor = currentServings / (recipe.servings || 4);
@@ -106,6 +169,37 @@ export function RecipeDetailWithCarousel({ recipe, onClose, onEdit, onDelete }: 
   const handleDelete = () => {
     onDelete();
     setShowDeleteDialog(false);
+  };
+
+  // Send ingredients to Google Keep via Gemini
+  const sendToGoogleKeep = async () => {
+    // Format ingredients as a list
+    const ingredientsList = scaledIngredients
+      .map(ing => ing.amount ? `${ing.amount} ${ing.name}` : ing.name)
+      .join('\n');
+    
+    // Create Gemini prompt
+    const prompt = `Füge bitte folgende Zutaten zu meiner Einkaufsliste in Google Keep hinzu (erstelle die Liste "Einkaufsliste" falls sie nicht existiert):
+
+${recipe.title} (${currentServings} Portionen):
+${ingredientsList}`;
+    
+    try {
+      // Copy prompt to clipboard
+      await navigator.clipboard.writeText(prompt);
+      toast.success('Prompt in Zwischenablage kopiert!', {
+        description: 'Füge ihn in Gemini ein und sende ab.',
+      });
+      
+      // Open Gemini in new tab
+      window.open('https://gemini.google.com/app', '_blank');
+    } catch (err) {
+      // Fallback: Show prompt in alert if clipboard fails
+      toast.error('Konnte nicht in Zwischenablage kopieren', {
+        description: 'Bitte kopiere den Text manuell.',
+      });
+      console.error('Clipboard error:', err);
+    }
   };
 
   return (
@@ -169,6 +263,56 @@ export function RecipeDetailWithCarousel({ recipe, onClose, onEdit, onDelete }: 
         </div>
       )}
 
+      {/* Sammlungen */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {recipe.collections && recipe.collections.length > 0 && (
+          <>
+            {recipe.collections.map((collection) => (
+              <Badge key={collection.id} variant="secondary" className="gap-1">
+                📁 {collection.name}
+                {isAdmin && (
+                  <X 
+                    className="h-3 w-3 cursor-pointer hover:text-destructive" 
+                    onClick={() => removeFromCollection(collection.id)}
+                  />
+                )}
+              </Badge>
+            ))}
+          </>
+        )}
+        
+        {/* Admin: Add to Collection */}
+        {isAdmin && collectionsToAdd.length > 0 && (
+          <div className="relative">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              disabled={isLoadingCollections}
+              onClick={() => setShowCollectionMenu(!showCollectionMenu)}
+            >
+              <FolderPlus className="h-4 w-4 mr-1" />
+              Zur Sammlung
+            </Button>
+            {showCollectionMenu && (
+              <div className="absolute top-full left-0 mt-1 bg-popover border rounded-md shadow-lg p-1 z-50 min-w-[180px]">
+                {collectionsToAdd.map((collection) => (
+                  <button 
+                    key={collection.id}
+                    className="w-full text-left px-3 py-2 text-sm rounded hover:bg-accent hover:text-accent-foreground"
+                    onClick={() => {
+                      addToCollection(collection.id);
+                      setShowCollectionMenu(false);
+                    }}
+                  >
+                    📁 {collection.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Zeitinformationen */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Card>
@@ -212,8 +356,19 @@ export function RecipeDetailWithCarousel({ recipe, onClose, onEdit, onDelete }: 
       {/* Zutaten */}
       <Card className="mb-6">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Zutaten</CardTitle>
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-3">
+              <CardTitle>Zutaten</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={sendToGoogleKeep}
+                className="text-xs"
+              >
+                <ShoppingCart className="h-3 w-3 mr-1" />
+                An Einkaufsliste
+              </Button>
+            </div>
             <div className="flex items-center gap-3">
               <Button
                 variant="outline"
