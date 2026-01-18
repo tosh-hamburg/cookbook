@@ -18,7 +18,7 @@ app.use(cors({
   origin: true,
   credentials: true,
 }));
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '25mb' })); // For base64 images (max 5MB each)
 
 // Make prisma available in routes
 app.locals.prisma = prisma;

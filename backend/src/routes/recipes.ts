@@ -1,8 +1,50 @@
 import { Router, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { AuthRequest, authenticateToken } from '../middleware/auth';
+import sharp from 'sharp';
 
 const router = Router();
+
+// Thumbnail settings
+const THUMBNAIL_WIDTH = 400;
+const THUMBNAIL_QUALITY = 70;
+
+/**
+ * Generate a thumbnail from a Base64 image
+ * Returns the original if it's a URL or if processing fails
+ */
+async function generateThumbnail(imageData: string): Promise<string> {
+  try {
+    // Skip if it's a URL (not Base64)
+    if (!imageData.startsWith('data:image/')) {
+      return imageData;
+    }
+
+    // Extract Base64 data
+    const matches = imageData.match(/^data:image\/(\w+);base64,(.+)$/);
+    if (!matches) {
+      return imageData;
+    }
+
+    const [, format, base64Data] = matches;
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    // Generate thumbnail
+    const thumbnailBuffer = await sharp(buffer)
+      .resize(THUMBNAIL_WIDTH, null, { 
+        withoutEnlargement: true,
+        fit: 'inside'
+      })
+      .jpeg({ quality: THUMBNAIL_QUALITY })
+      .toBuffer();
+
+    // Return as Base64 data URL
+    return `data:image/jpeg;base64,${thumbnailBuffer.toString('base64')}`;
+  } catch (error) {
+    console.error('Thumbnail generation failed:', error);
+    return imageData; // Return original on error
+  }
+}
 
 // Include configuration for recipe queries
 const recipeInclude = {
@@ -25,7 +67,7 @@ const recipeInclude = {
   }
 } as const;
 
-// Transform recipe to frontend format
+// Transform recipe to frontend format (full details)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function transformRecipe(recipe: any) {
   return {
@@ -55,6 +97,38 @@ function transformRecipe(recipe: any) {
   };
 }
 
+// Transform recipe for list view (with thumbnail, no full images)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function transformRecipeForList(recipe: any): Promise<{
+  id: string;
+  title: string;
+  thumbnail: string | null;
+  prepTime: number;
+  cookTime: number;
+  totalTime: number;
+  servings: number;
+  categories: string[];
+  createdAt: string;
+}> {
+  // Generate thumbnail from first image
+  let thumbnail: string | null = null;
+  if (recipe.images && recipe.images.length > 0) {
+    thumbnail = await generateThumbnail(recipe.images[0]);
+  }
+
+  return {
+    id: recipe.id,
+    title: recipe.title,
+    thumbnail,
+    prepTime: recipe.prepTime,
+    cookTime: recipe.cookTime,
+    totalTime: recipe.totalTime,
+    servings: recipe.servings,
+    categories: recipe.categories.map((rc: { category: { name: string } }) => rc.category.name),
+    createdAt: recipe.createdAt.toISOString()
+  };
+}
+
 // Helper to get string id from params
 function getIdParam(params: Record<string, unknown>): string {
   const id = params.id;
@@ -64,13 +138,17 @@ function getIdParam(params: Record<string, unknown>): string {
   return id;
 }
 
-// Get all recipes with optional filters
+// Get all recipes with optional filters and pagination
 router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const prisma: PrismaClient = req.app.locals.prisma;
     
     // Parse filter parameters
     const { category, collection, search } = req.query;
+    
+    // Parse pagination parameters
+    const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 20, 1), 100);
+    const offset = Math.max(parseInt(req.query.offset as string) || 0, 0);
     
     // Build where clause
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -104,15 +182,33 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
       };
     }
 
+    // Get total count for pagination
+    const total = await prisma.recipe.count({ where });
+
+    // Get paginated recipes
     const recipes = await prisma.recipe.findMany({
       where,
       include: recipeInclude,
       orderBy: {
         createdAt: 'desc'
-      }
+      },
+      skip: offset,
+      take: limit
     });
 
-    res.json(recipes.map(transformRecipe));
+    // Transform recipes with thumbnails (parallel processing)
+    const transformedRecipes = await Promise.all(
+      recipes.map(recipe => transformRecipeForList(recipe))
+    );
+
+    // Return paginated response
+    res.json({
+      items: transformedRecipes,
+      total,
+      limit,
+      offset,
+      hasMore: offset + recipes.length < total
+    });
   } catch (error) {
     console.error('Get recipes error:', error);
     res.status(500).json({ error: 'Fehler beim Abrufen der Rezepte' });
@@ -238,6 +334,14 @@ router.put('/:id', authenticateToken, async (req: AuthRequest, res: Response) =>
       sourceUrl
     } = req.body;
 
+    // Debug logging for images
+    console.log(`[UPDATE] Recipe ${id}: Received ${images?.length || 0} images`);
+    if (images && images.length > 0) {
+      images.forEach((img: string, index: number) => {
+        console.log(`  Image ${index}: ${img.length} chars, starts with: ${img.substring(0, 50)}...`);
+      });
+    }
+
     // Check if recipe exists and user has permission
     const existingRecipe = await prisma.recipe.findUnique({
       where: { id }
@@ -302,6 +406,9 @@ router.put('/:id', authenticateToken, async (req: AuthRequest, res: Response) =>
       },
       include: recipeInclude
     });
+
+    // Debug logging for saved images
+    console.log(`[UPDATE] Recipe ${id}: Saved ${recipe.images?.length || 0} images to database`);
 
     res.json(transformRecipe(recipe));
   } catch (error) {
