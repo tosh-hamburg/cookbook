@@ -2,7 +2,7 @@
 
 **Werbefreie Kochrezeptverwaltung für dein eigenes Netzwerk**
 
-Cookbook ist eine selbst-gehostete Webanwendung zur Verwaltung von Kochrezepten. Importiere Rezepte von beliebten Rezeptseiten, organisiere sie in Sammlungen und greife von überall in deinem Netzwerk darauf zu – komplett werbefrei.
+Cookbook ist eine selbst-gehostete Webanwendung zur Verwaltung von Kochrezepten. Importiere Rezepte von beliebten Rezeptseiten, organisiere sie in Sammlungen und greife von überall darauf zu – komplett werbefrei.
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-20232A?style=flat&logo=react&logoColor=61DAFB)
