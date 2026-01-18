@@ -13,7 +13,13 @@ import { loadCategories } from '@/app/utils/categories';
 import { Toaster } from '@/app/components/ui/sonner';
 import { Button } from '@/app/components/ui/button';
 import { toast } from 'sonner';
-import { LogOut, Settings, Loader2, CalendarDays, Smartphone } from 'lucide-react';
+import { LogOut, Settings, Loader2, CalendarDays, Smartphone, Menu } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/app/components/ui/dropdown-menu';
 
 type View = 'list' | 'detail' | 'create' | 'edit' | 'admin' | 'planner';
 
@@ -202,17 +208,19 @@ export default function App() {
         {/* Dark overlay for better text readability */}
         <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/70" />
         
-        <div className="relative max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="text-4xl">📖</div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="text-3xl sm:text-4xl">📖</div>
             <div>
-              <h1 className="text-2xl font-bold text-white tracking-wide">Cookbook</h1>
-              <p className="text-sm text-white/80">
+              <h1 className="text-xl sm:text-2xl font-bold text-white tracking-wide">Cookbook</h1>
+              <p className="text-xs sm:text-sm text-white/80 hidden sm:block">
                 Angemeldet als: {currentUser.username} ({currentUser.role === 'admin' ? 'Administrator' : 'Benutzer'})
               </p>
             </div>
           </div>
-          <div className="flex gap-2">
+          
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex gap-2">
             {currentView !== 'planner' && (
               <Button 
                 variant="outline" 
@@ -250,6 +258,43 @@ export default function App() {
               <LogOut className="h-4 w-4 mr-2" />
               Abmelden
             </Button>
+          </div>
+          
+          {/* Mobile Navigation - Dropdown Menu */}
+          <div className="md:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white"
+                >
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                {currentView !== 'planner' && (
+                  <DropdownMenuItem onClick={handleOpenPlanner}>
+                    <CalendarDays className="h-4 w-4 mr-2" />
+                    Wochenplaner
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={() => window.open('/api/app/download', '_blank')}>
+                  <Smartphone className="h-4 w-4 mr-2" />
+                  App herunterladen
+                </DropdownMenuItem>
+                {isAdmin && currentView !== 'admin' && (
+                  <DropdownMenuItem onClick={handleOpenAdmin}>
+                    <Settings className="h-4 w-4 mr-2" />
+                    Verwaltung
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Abmelden
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
