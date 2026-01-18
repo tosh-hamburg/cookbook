@@ -6,15 +6,16 @@ import { RecipeDetailWithCarousel } from '@/app/components/RecipeDetailWithCarou
 import { RecipeForm } from '@/app/components/RecipeForm';
 import { Login } from '@/app/components/Login';
 import { AdminPanel } from '@/app/components/AdminPanel';
+import { WeeklyPlanner } from '@/app/components/WeeklyPlanner';
 import { loadRecipes, addRecipe, updateRecipe, deleteRecipe } from '@/app/utils/localStorage';
 import { initializeAuth, getCurrentUser, logout } from '@/app/utils/auth';
 import { loadCategories } from '@/app/utils/categories';
 import { Toaster } from '@/app/components/ui/sonner';
 import { Button } from '@/app/components/ui/button';
 import { toast } from 'sonner';
-import { LogOut, Settings, Loader2 } from 'lucide-react';
+import { LogOut, Settings, Loader2, CalendarDays, Smartphone } from 'lucide-react';
 
-type View = 'list' | 'detail' | 'create' | 'edit' | 'admin';
+type View = 'list' | 'detail' | 'create' | 'edit' | 'admin' | 'planner';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -160,6 +161,14 @@ export default function App() {
     setCurrentView('list');
   };
 
+  const handleOpenPlanner = () => {
+    setCurrentView('planner');
+  };
+
+  const handleClosePlanner = () => {
+    setCurrentView('list');
+  };
+
   // Zeige Loading während der Initialisierung
   if (!isInitialized) {
     return (
@@ -204,6 +213,25 @@ export default function App() {
             </div>
           </div>
           <div className="flex gap-2">
+            {currentView !== 'planner' && (
+              <Button 
+                variant="outline" 
+                onClick={handleOpenPlanner}
+                className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white"
+              >
+                <CalendarDays className="h-4 w-4 mr-2" />
+                Wochenplaner
+              </Button>
+            )}
+            <Button 
+              variant="outline" 
+              onClick={() => window.open('/api/app/download', '_blank')}
+              className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white"
+              title="Android App herunterladen"
+            >
+              <Smartphone className="h-4 w-4 mr-2" />
+              App
+            </Button>
             {isAdmin && currentView !== 'admin' && (
               <Button 
                 variant="outline" 
@@ -278,6 +306,13 @@ export default function App() {
               <AdminPanel
                 currentUser={currentUser}
                 onClose={handleCloseAdmin}
+              />
+            )}
+
+            {currentView === 'planner' && (
+              <WeeklyPlanner
+                recipes={recipes}
+                onClose={handleClosePlanner}
               />
             )}
           </>

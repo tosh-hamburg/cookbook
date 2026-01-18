@@ -146,9 +146,12 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
     // Parse filter parameters
     const { category, collection, search } = req.query;
     
-    // Parse pagination parameters
-    const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 20, 1), 100);
-    const offset = Math.max(parseInt(req.query.offset as string) || 0, 0);
+    // Check if full recipe data is requested (for web app)
+    const fullData = req.query.full === 'true';
+    
+    // Parse pagination parameters (only used when not requesting full data)
+    const limit = fullData ? undefined : Math.min(Math.max(parseInt(req.query.limit as string) || 20, 1), 100);
+    const offset = fullData ? undefined : Math.max(parseInt(req.query.offset as string) || 0, 0);
     
     // Build where clause
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -182,20 +185,25 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
       };
     }
 
-    // Get total count for pagination
-    const total = await prisma.recipe.count({ where });
-
-    // Get paginated recipes
+    // Get recipes (with or without pagination)
     const recipes = await prisma.recipe.findMany({
       where,
       include: recipeInclude,
       orderBy: {
         createdAt: 'desc'
       },
-      skip: offset,
-      take: limit
+      ...(limit !== undefined && { skip: offset, take: limit })
     });
 
+    // If full data requested, return complete recipe objects (for web app)
+    if (fullData) {
+      const transformedRecipes = recipes.map(recipe => transformRecipe(recipe));
+      return res.json(transformedRecipes);
+    }
+
+    // Otherwise, return paginated response with thumbnails (for mobile app)
+    const total = await prisma.recipe.count({ where });
+    
     // Transform recipes with thumbnails (parallel processing)
     const transformedRecipes = await Promise.all(
       recipes.map(recipe => transformRecipeForList(recipe))
@@ -207,7 +215,7 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
       total,
       limit,
       offset,
-      hasMore: offset + recipes.length < total
+      hasMore: (offset || 0) + recipes.length < total
     });
   } catch (error) {
     console.error('Get recipes error:', error);

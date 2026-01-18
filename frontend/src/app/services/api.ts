@@ -165,8 +165,10 @@ export const recipesApi = {
     if (filters?.category) params.append('category', filters.category);
     if (filters?.collection) params.append('collection', filters.collection);
     if (filters?.search) params.append('search', filters.search);
+    // Request full recipe data for web app
+    params.append('full', 'true');
     const queryString = params.toString();
-    return fetchApi<Recipe[]>(`/recipes${queryString ? `?${queryString}` : ''}`);
+    return fetchApi<Recipe[]>(`/recipes?${queryString}`);
   },
 
   getById: async (id: string): Promise<Recipe> => {
@@ -296,6 +298,75 @@ export const usersApi = {
 // Health check
 export const healthCheck = async (): Promise<{ status: string; timestamp: string }> => {
   return fetchApi<{ status: string; timestamp: string }>('/health');
+};
+
+// Meal Plans API (Wochenplaner)
+export interface MealSlotData {
+  dayIndex: number;
+  mealType: 'breakfast' | 'lunch' | 'dinner';
+  servings: number;
+  recipe: {
+    id: string;
+    title: string;
+    images: string[];
+    ingredients: Array<{ name: string; amount: string }>;
+    servings: number;
+    totalTime: number;
+    categories: string[];
+  } | null;
+}
+
+export interface MealPlanData {
+  id: string | null;
+  weekStart: string;
+  meals: MealSlotData[];
+}
+
+export interface MealSlotUpdate {
+  dayIndex: number;
+  mealType: 'breakfast' | 'lunch' | 'dinner';
+  recipeId: string | null;
+  servings: number;
+}
+
+export const mealPlansApi = {
+  // Get meal plan for a specific week
+  getByWeek: async (weekStart: Date): Promise<MealPlanData> => {
+    const dateStr = weekStart.toISOString().split('T')[0];
+    return fetchApi<MealPlanData>(`/mealplans/${dateStr}`);
+  },
+
+  // Save entire meal plan for a week
+  saveWeek: async (weekStart: Date, meals: MealSlotUpdate[]): Promise<MealPlanData> => {
+    const dateStr = weekStart.toISOString().split('T')[0];
+    return fetchApi<MealPlanData>(`/mealplans/${dateStr}`, {
+      method: 'PUT',
+      body: JSON.stringify({ meals }),
+    });
+  },
+
+  // Update a single meal slot
+  updateSlot: async (
+    weekStart: Date,
+    dayIndex: number,
+    mealType: 'breakfast' | 'lunch' | 'dinner',
+    recipeId: string | null,
+    servings: number
+  ): Promise<MealPlanData> => {
+    const dateStr = weekStart.toISOString().split('T')[0];
+    return fetchApi<MealPlanData>(`/mealplans/${dateStr}/slot`, {
+      method: 'PATCH',
+      body: JSON.stringify({ dayIndex, mealType, recipeId, servings }),
+    });
+  },
+
+  // Delete meal plan for a week
+  deleteWeek: async (weekStart: Date): Promise<void> => {
+    const dateStr = weekStart.toISOString().split('T')[0];
+    await fetchApi<{ message: string }>(`/mealplans/${dateStr}`, {
+      method: 'DELETE',
+    });
+  },
 };
 
 // Import API - for importing recipes from external URLs

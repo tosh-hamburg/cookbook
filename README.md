@@ -17,11 +17,13 @@ Cookbook ist eine selbst-gehostete Webanwendung zur Verwaltung von Kochrezepten.
 - 📁 **Sammlungen** – Organisiere Rezepte in eigenen Sammlungen (z.B. "Sommerrezepte", "Schnelle Gerichte")
 - 🏷️ **Kategorien** – Filtere Rezepte nach Kategorien
 - 👥 **Portionsrechner** – Passe Zutatenmengen automatisch an die gewünschte Portionszahl an
-- 🛒 **Einkaufsliste** – Exportiere Zutaten für Google Keep via Gemini
+- 📅 **Wochenplaner** – Plane Mahlzeiten für die Woche (Frühstück, Mittag, Abend) mit automatischer Zutaten-Aggregation
+- 🛒 **Einkaufsliste** – Exportiere Zutaten für Google Keep via Gemini (für einzelne Rezepte oder den gesamten Wochenplan)
 - 🔐 **Benutzerverwaltung** – Multi-User-Support mit Admin- und Benutzer-Rollen
 - 🔑 **Google SSO** – Anmeldung mit Google-Account
 - 🛡️ **2FA** – Optionale Zwei-Faktor-Authentifizierung
 - 📱 **Responsive Design** – Optimiert für Desktop, Tablet und Smartphone
+- 📲 **Android App** – Native Android-App als mobiles Frontend (siehe [Android App](#-android-app))
 
 ## 🖼️ Screenshots
 
@@ -101,8 +103,14 @@ cookbook/
 │   ├── src/
 │   │   ├── app/
 │   │   │   ├── components/   # UI-Komponenten
+│   │   │   │   ├── WeeklyPlanner.tsx      # Wochenplaner
+│   │   │   │   ├── RecipeSearchDialog.tsx # Rezeptsuche-Dialog
+│   │   │   │   └── ...
 │   │   │   ├── services/     # API-Client
 │   │   │   ├── types/        # TypeScript-Typen
+│   │   │   │   ├── recipe.ts
+│   │   │   │   ├── mealplan.ts  # Wochenplaner-Typen
+│   │   │   │   └── user.ts
 │   │   │   └── utils/        # Hilfsfunktionen
 │   │   └── main.tsx
 │   └── package.json
@@ -125,10 +133,51 @@ cookbook/
 | Komponente | Technologie |
 |------------|-------------|
 | Frontend | React 18, Vite, TypeScript, Tailwind CSS, shadcn/ui |
-| Backend | Node.js, Express, TypeScript, Prisma ORM |
+| Backend | Node.js, Express, TypeScript, Prisma ORM, Sharp (Bildverarbeitung) |
 | Datenbank | PostgreSQL 16 |
 | Auth | JWT, bcrypt, Google OAuth 2.0, TOTP (2FA) |
 | Container | Docker, Docker Compose |
+| Mobile | Kotlin, Jetpack, Retrofit, Material Design 3 |
+
+## 📅 Wochenplaner
+
+Der Wochenplaner ermöglicht die Planung von Mahlzeiten für eine gesamte Woche:
+
+**Funktionen:**
+- 📆 Kalenderansicht einer Woche (Montag bis Sonntag)
+- 🍽️ Drei Mahlzeiten pro Tag (Frühstück, Mittagessen, Abendessen)
+- 🔍 Rezeptauswahl mit Volltextsuche, Kategorie- und Sammlungsfilter
+- 👥 Individuelle Portionsangabe pro Mahlzeit
+- 🧮 Automatische Zutaten-Aggregation (gleiche Zutaten werden zusammengerechnet)
+- 🛒 Export der gesamten Einkaufsliste an Gemini/Google Keep
+
+**So nutzt du den Wochenplaner:**
+1. Klicke auf "Wochenplaner" im Header
+2. Wähle die gewünschte Woche (Standard: kommende Woche)
+3. Klicke auf einen Mahlzeit-Slot und wähle ein Rezept
+4. Passe die Portionszahl mit +/- an
+5. Klicke auf "Einkaufsliste erstellen" um alle Zutaten an Gemini zu senden
+
+## 📲 Android App
+
+Eine native Android-App ist als mobiles Frontend verfügbar. Der Quellcode befindet sich im separaten Repository/Ordner `cookbookApp`.
+
+**Features der Android App:**
+- 📱 Native Android-Erfahrung
+- 🔐 Login mit Benutzername/Passwort oder Google SSO
+- 📖 Rezepte durchsuchen, anzeigen und bearbeiten
+- 📷 Fotos direkt mit der Kamera aufnehmen oder aus der Galerie hinzufügen
+- 👥 Portionsrechner mit automatischer Mengenberechnung
+- 📁 Sammlungen verwalten
+- 🛒 Zutaten an Gemini senden
+- 🔄 Automatische Netzwerkerkennung (intern/extern)
+
+**Technologie:**
+- Kotlin
+- Jetpack Components (ViewModel, Navigation)
+- Retrofit + OkHttp
+- Coil für Bildverarbeitung
+- Material Design 3
 
 ## 📥 Rezept-Import
 
@@ -189,12 +238,43 @@ Die Anwendung nutzt Volume-Mounts und Hot-Reloading – Änderungen am Code werd
 
 | Endpunkt | Methode | Beschreibung |
 |----------|---------|--------------|
-| `/api/recipes` | GET | Alle Rezepte (mit Filter) |
+| `/api/recipes` | GET | Alle Rezepte (mit Filter & Paginierung) |
 | `/api/recipes/:id` | GET | Einzelnes Rezept |
 | `/api/recipes` | POST | Rezept erstellen |
 | `/api/recipes/:id` | PUT | Rezept bearbeiten |
 | `/api/recipes/:id` | DELETE | Rezept löschen |
 | `/api/import` | POST | Rezept von URL importieren |
+
+**Query-Parameter für `/api/recipes`:**
+
+| Parameter | Typ | Beschreibung |
+|-----------|-----|--------------|
+| `category` | string | Filter nach Kategorie |
+| `collection` | string | Filter nach Sammlungs-ID |
+| `search` | string | Volltextsuche im Titel |
+| `full` | boolean | `true` = vollständige Rezeptdaten (Web), `false` = Thumbnails + Basis-Infos (Mobile) |
+| `limit` | number | Anzahl Rezepte pro Seite (nur ohne `full=true`, max. 100) |
+| `offset` | number | Offset für Paginierung (nur ohne `full=true`) |
+
+**Antwortformate:**
+
+Mit `full=true` (Web-App):
+```json
+[
+  { "id": "...", "title": "...", "ingredients": [...], "instructions": "...", ... }
+]
+```
+
+Ohne `full=true` (Mobile App, paginiert):
+```json
+{
+  "items": [{ "id": "...", "title": "...", "thumbnail": "...", ... }],
+  "total": 42,
+  "limit": 20,
+  "offset": 0,
+  "hasMore": true
+}
+```
 
 ### Sammlungen & Kategorien
 
@@ -223,6 +303,8 @@ MIT License – siehe [LICENSE](LICENSE) für Details.
 - [shadcn/ui](https://ui.shadcn.com/) – UI-Komponenten
 - [Prisma](https://www.prisma.io/) – Datenbank ORM
 - [Lucide](https://lucide.dev/) – Icons
+- [Sharp](https://sharp.pixelplumbing.com/) – Bildverarbeitung & Thumbnails
+- [Retrofit](https://square.github.io/retrofit/) – HTTP-Client für Android
 
 ---
 

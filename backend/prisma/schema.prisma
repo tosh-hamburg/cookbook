@@ -24,6 +24,7 @@ model User {
   
   createdAt     DateTime @default(now())
   recipes       Recipe[]
+  mealPlans     MealPlan[]
 }
 
 model Recipe {
@@ -45,6 +46,7 @@ model Recipe {
   ingredients     Ingredient[]
   categories      RecipeCategory[]
   collections     RecipeCollection[]
+  mealSlots       MealSlot[]         // Verwendung in Wochenplänen
 }
 
 model Ingredient {
@@ -86,3 +88,30 @@ model RecipeCollection {
 
   @@id([recipeId, collectionId])
 }
+
+// Wochenplaner
+model MealPlan {
+  id        String     @id @default(uuid())
+  userId    String
+  weekStart DateTime   // Montag der Woche (ohne Uhrzeit)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  meals     MealSlot[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([userId, weekStart]) // Ein Plan pro Benutzer pro Woche
+}
+
+model MealSlot {
+  id         String   @id @default(uuid())
+  mealPlanId String
+  mealPlan   MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  dayIndex   Int      // 0 = Montag, 6 = Sonntag
+  mealType   String   // "breakfast", "lunch", "dinner"
+  recipeId   String?
+  recipe     Recipe?  @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+  servings   Int      @default(2)
+
+  @@unique([mealPlanId, dayIndex, mealType]) // Ein Slot pro Tag/Mahlzeit
+}
+

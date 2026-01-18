@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
 import { PrismaClient } from '@prisma/client';
 
 import authRoutes from './routes/auth';
@@ -8,6 +9,7 @@ import categoriesRoutes from './routes/categories';
 import collectionsRoutes from './routes/collections';
 import usersRoutes from './routes/users';
 import importRoutes from './routes/import';
+import mealplansRoutes from './routes/mealplans';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -20,6 +22,9 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '25mb' })); // For base64 images (max 5MB each)
 
+// Serve static files (downloads, etc.)
+app.use('/public', express.static(path.join(__dirname, '../public')));
+
 // Make prisma available in routes
 app.locals.prisma = prisma;
 
@@ -30,10 +35,33 @@ app.use('/api/categories', categoriesRoutes);
 app.use('/api/collections', collectionsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/import', importRoutes);
+app.use('/api/mealplans', mealplansRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// App download endpoint
+app.get('/api/app/download', (req, res) => {
+  const apkPath = path.join(__dirname, '../public/downloads/cookbook-app.apk');
+  res.download(apkPath, 'Cookbook.apk', (err) => {
+    if (err) {
+      console.error('Download error:', err);
+      res.status(404).json({ error: 'App nicht gefunden' });
+    }
+  });
+});
+
+// App info endpoint
+app.get('/api/app/info', (req, res) => {
+  res.json({
+    name: 'Cookbook',
+    version: '1.0',
+    platform: 'Android',
+    downloadUrl: '/api/app/download',
+    size: '7 MB'
+  });
 });
 
 // Error handler
