@@ -286,17 +286,6 @@ export function Login({ onLogin }: LoginProps) {
               {isLoading ? 'Wird angemeldet...' : 'Anmelden'}
             </Button>
           </form>
-          <div className="mt-6 p-4 bg-muted rounded-lg">
-            <p className="text-sm font-medium mb-2">Demo-Zugangsdaten:</p>
-            <div className="text-sm space-y-1">
-              <p>
-                <strong>Admin:</strong> admin / admin123
-              </p>
-              <p className="text-xs text-muted-foreground mt-2">
-                Die Passwörter werden sicher mit bcrypt gehasht gespeichert.
-              </p>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>

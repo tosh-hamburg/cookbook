@@ -20,6 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
+import { settingsApi } from '@/app/services/api';
 
 type View = 'list' | 'detail' | 'create' | 'edit' | 'admin' | 'planner';
 
@@ -27,9 +28,25 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [currentView, setCurrentView] = useState<View>('list');
+  const [previousView, setPreviousView] = useState<View>('list');
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [geminiPrompt, setGeminiPrompt] = useState<string>('');
+  
+  // Weekly planner state (persisted across view changes)
+  const [plannerWeekStart, setPlannerWeekStart] = useState<Date>(() => {
+    // Start with next week
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const daysUntilNextMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
+    const nextMonday = new Date(now);
+    nextMonday.setDate(now.getDate() + daysUntilNextMonday);
+    nextMonday.setHours(0, 0, 0, 0);
+    return nextMonday;
+  });
+  const [excludedIngredients, setExcludedIngredients] = useState<Set<string>>(new Set());
+  const [sentIngredients, setSentIngredients] = useState<Set<string>>(new Set());
 
   // Initialisiere Auth und lade Benutzer
   useEffect(() => {
@@ -63,6 +80,15 @@ export default function App() {
       setRecipes(loadedRecipes);
       // Kategorien auch laden
       await loadCategories();
+      // Gemini-Prompt aus Einstellungen laden
+      try {
+        const settings = await settingsApi.getGeminiPrompt();
+        if (settings.geminiPrompt) {
+          setGeminiPrompt(settings.geminiPrompt);
+        }
+      } catch {
+        // Wenn keine Einstellungen vorhanden, Standard-Prompt verwenden
+      }
     } catch (error) {
       console.error('Error loading recipes:', error);
       toast.error('Fehler beim Laden der Rezepte');
@@ -89,8 +115,9 @@ export default function App() {
     toast.success('Erfolgreich abgemeldet');
   };
 
-  const handleSelectRecipe = (recipe: Recipe) => {
+  const handleSelectRecipe = (recipe: Recipe, fromView?: View) => {
     setSelectedRecipe(recipe);
+    setPreviousView(fromView || currentView);
     setCurrentView('detail');
   };
 
@@ -155,6 +182,16 @@ export default function App() {
   };
 
   const handleBackToList = () => {
+    // Return to the previous view (list or planner)
+    if (previousView === 'planner') {
+      setCurrentView('planner');
+    } else {
+      setSelectedRecipe(null);
+      setCurrentView('list');
+    }
+  };
+
+  const handleGoToRecipes = () => {
     setSelectedRecipe(null);
     setCurrentView('list');
   };
@@ -168,11 +205,17 @@ export default function App() {
   };
 
   const handleOpenPlanner = () => {
+    setPreviousView(currentView);
     setCurrentView('planner');
   };
 
   const handleClosePlanner = () => {
     setCurrentView('list');
+  };
+
+  // Handle viewing a recipe from the planner
+  const handleViewRecipeFromPlanner = (recipe: Recipe) => {
+    handleSelectRecipe(recipe, 'planner');
   };
 
   // Zeige Loading während der Initialisierung
@@ -209,7 +252,11 @@ export default function App() {
         <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/70" />
         
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between">
-          <div className="flex items-center gap-3 sm:gap-4">
+          <div 
+            className="flex items-center gap-3 sm:gap-4 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={handleGoToRecipes}
+            title="Zu Meine Rezepte"
+          >
             <div className="text-3xl sm:text-4xl">📖</div>
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-white tracking-wide">Cookbook</h1>
@@ -351,6 +398,17 @@ export default function App() {
               <AdminPanel
                 currentUser={currentUser}
                 onClose={handleCloseAdmin}
+                onSettingsUpdate={async () => {
+                  // Reload Gemini prompt when settings change
+                  try {
+                    const settings = await settingsApi.getGeminiPrompt();
+                    if (settings.geminiPrompt) {
+                      setGeminiPrompt(settings.geminiPrompt);
+                    }
+                  } catch {
+                    // Ignore errors
+                  }
+                }}
               />
             )}
 
@@ -358,6 +416,14 @@ export default function App() {
               <WeeklyPlanner
                 recipes={recipes}
                 onClose={handleClosePlanner}
+                onViewRecipe={handleViewRecipeFromPlanner}
+                geminiPrompt={geminiPrompt}
+                excludedIngredients={excludedIngredients}
+                onExcludedIngredientsChange={setExcludedIngredients}
+                currentWeekStart={plannerWeekStart}
+                onWeekStartChange={setPlannerWeekStart}
+                sentIngredients={sentIngredients}
+                onSentIngredientsChange={setSentIngredients}
               />
             )}
           </>

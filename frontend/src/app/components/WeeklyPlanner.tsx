@@ -13,6 +13,10 @@ import {
   Sun,
   Moon,
   Loader2,
+  Trash2,
+  RotateCcw,
+  Check,
+  Send,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Recipe } from '@/app/types/recipe';
@@ -41,6 +45,14 @@ import { mealPlansApi, type MealPlanData } from '@/app/services/api';
 interface WeeklyPlannerProps {
   recipes: Recipe[];
   onClose: () => void;
+  onViewRecipe?: (recipe: Recipe) => void;
+  geminiPrompt?: string;
+  excludedIngredients: Set<string>;
+  onExcludedIngredientsChange: (excluded: Set<string>) => void;
+  currentWeekStart: Date;
+  onWeekStartChange: (date: Date) => void;
+  sentIngredients: Set<string>;
+  onSentIngredientsChange: (sent: Set<string>) => void;
 }
 
 // Get icon for meal type
@@ -215,10 +227,21 @@ function mealPlanDataToWeekPlan(data: MealPlanData, weekStart: Date, recipes: Re
   return weekPlan;
 }
 
-export function WeeklyPlanner({ recipes, onClose }: WeeklyPlannerProps) {
-  // Start with next week
-  const [currentWeekStart, setCurrentWeekStart] = useState(() => getNextWeekStart());
-  const [weekPlan, setWeekPlan] = useState<WeekPlan>(() => createEmptyWeekPlan(getNextWeekStart()));
+const DEFAULT_GEMINI_PROMPT = 'Füge bitte folgende Zutaten zu meiner Einkaufsliste in Google Keep hinzu (erstelle die Liste "Einkaufsliste" falls sie nicht existiert):';
+
+export function WeeklyPlanner({ 
+  recipes, 
+  onClose, 
+  onViewRecipe, 
+  geminiPrompt,
+  excludedIngredients,
+  onExcludedIngredientsChange,
+  currentWeekStart,
+  onWeekStartChange,
+  sentIngredients,
+  onSentIngredientsChange,
+}: WeeklyPlannerProps) {
+  const [weekPlan, setWeekPlan] = useState<WeekPlan>(() => createEmptyWeekPlan(currentWeekStart));
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   
@@ -235,17 +258,20 @@ export function WeeklyPlanner({ recipes, onClose }: WeeklyPlannerProps) {
         const data = await mealPlansApi.getByWeek(currentWeekStart);
         const plan = mealPlanDataToWeekPlan(data, currentWeekStart, recipes);
         setWeekPlan(plan);
+        // Load sent ingredients from API
+        onSentIngredientsChange(new Set(data.sentIngredients || []));
       } catch (error) {
         console.error('Error loading meal plan:', error);
         // On error, start with empty plan
         setWeekPlan(createEmptyWeekPlan(currentWeekStart));
+        onSentIngredientsChange(new Set());
       } finally {
         setIsLoading(false);
       }
     };
     
     loadMealPlan();
-  }, [currentWeekStart, recipes]);
+  }, [currentWeekStart, recipes, onSentIngredientsChange]);
   
   // Save slot to backend
   const saveSlot = useCallback(async (
@@ -269,27 +295,33 @@ export function WeeklyPlanner({ recipes, onClose }: WeeklyPlannerProps) {
   const goToPreviousWeek = useCallback(() => {
     const newStart = new Date(currentWeekStart);
     newStart.setDate(newStart.getDate() - 7);
-    setCurrentWeekStart(newStart);
-  }, [currentWeekStart]);
+    onWeekStartChange(newStart);
+    onExcludedIngredientsChange(new Set()); // Reset exclusions when changing week
+    // sentIngredients will be loaded from API in useEffect
+  }, [currentWeekStart, onWeekStartChange, onExcludedIngredientsChange]);
   
   // Navigate to next week
   const goToNextWeek = useCallback(() => {
     const newStart = new Date(currentWeekStart);
     newStart.setDate(newStart.getDate() + 7);
-    setCurrentWeekStart(newStart);
-  }, [currentWeekStart]);
+    onWeekStartChange(newStart);
+    onExcludedIngredientsChange(new Set()); // Reset exclusions when changing week
+    // sentIngredients will be loaded from API in useEffect
+  }, [currentWeekStart, onWeekStartChange, onExcludedIngredientsChange]);
   
   // Go to current week
   const goToCurrentWeek = useCallback(() => {
     const start = getCurrentWeekStart();
-    setCurrentWeekStart(start);
-  }, []);
+    onWeekStartChange(start);
+    onExcludedIngredientsChange(new Set()); // Reset exclusions when changing week
+  }, [onWeekStartChange, onExcludedIngredientsChange]);
   
   // Go to next upcoming week
   const goToNextUpcomingWeek = useCallback(() => {
     const start = getNextWeekStart();
-    setCurrentWeekStart(start);
-  }, []);
+    onWeekStartChange(start);
+    onExcludedIngredientsChange(new Set()); // Reset exclusions when changing week
+  }, [onWeekStartChange, onExcludedIngredientsChange]);
   
   // Check if currently viewing current week
   const isCurrentWeek = useMemo(() => {
@@ -388,7 +420,37 @@ export function WeeklyPlanner({ recipes, onClose }: WeeklyPlannerProps) {
   };
   
   // Calculate aggregated ingredients
-  const aggregatedIngredients = useMemo(() => aggregateIngredients(weekPlan), [weekPlan]);
+  const allAggregatedIngredients = useMemo(() => aggregateIngredients(weekPlan), [weekPlan]);
+  
+  // Filter out excluded ingredients
+  const aggregatedIngredients = useMemo(() => 
+    allAggregatedIngredients.filter(ing => !excludedIngredients.has(ing.name.toLowerCase())),
+    [allAggregatedIngredients, excludedIngredients]
+  );
+  
+  // Calculate new (not yet sent) ingredients
+  const newIngredients = useMemo(() => 
+    aggregatedIngredients.filter(ing => !sentIngredients.has(ing.name.toLowerCase())),
+    [aggregatedIngredients, sentIngredients]
+  );
+  
+  // Calculate already sent ingredients (that are still in the plan)
+  const alreadySentIngredients = useMemo(() => 
+    aggregatedIngredients.filter(ing => sentIngredients.has(ing.name.toLowerCase())),
+    [aggregatedIngredients, sentIngredients]
+  );
+  
+  // Toggle ingredient exclusion
+  const toggleIngredientExclusion = (ingredientName: string) => {
+    const normalizedName = ingredientName.toLowerCase();
+    const newSet = new Set(excludedIngredients);
+    if (newSet.has(normalizedName)) {
+      newSet.delete(normalizedName);
+    } else {
+      newSet.add(normalizedName);
+    }
+    onExcludedIngredientsChange(newSet);
+  };
   
   // Count total meals planned
   const totalMealsPlanned = useMemo(() => {
@@ -401,39 +463,61 @@ export function WeeklyPlanner({ recipes, onClose }: WeeklyPlannerProps) {
     return count;
   }, [weekPlan]);
   
-  // Send ingredients to Gemini
-  const sendToGemini = async () => {
-    if (aggregatedIngredients.length === 0) {
+  // Send ingredients to Gemini (only new ones or all)
+  const sendToGemini = async (onlyNew: boolean = false) => {
+    const ingredientsToSend = onlyNew ? newIngredients : aggregatedIngredients;
+    
+    if (ingredientsToSend.length === 0) {
       toast.error('Keine Zutaten vorhanden', {
-        description: 'Fügen Sie zuerst Rezepte zum Wochenplan hinzu.',
+        description: onlyNew 
+          ? 'Alle Zutaten wurden bereits gesendet.' 
+          : 'Fügen Sie zuerst Rezepte zum Wochenplan hinzu.',
       });
       return;
     }
     
     // Format ingredients list
-    const ingredientsList = aggregatedIngredients
+    const ingredientsList = ingredientsToSend
       .map(ing => ing.totalAmount ? `${ing.totalAmount} ${ing.name}` : ing.name)
       .join('\n');
     
-    // Create prompt
-    const weekRange = formatWeekRange(weekPlan.weekStart, weekPlan.weekEnd);
-    const prompt = `Füge bitte folgende Zutaten zu meiner Einkaufsliste in Google Keep hinzu (erstelle die Liste "Einkaufsliste" falls sie nicht existiert):
+    // Create prompt with configurable intro text (only intro + ingredients)
+    const introText = geminiPrompt || DEFAULT_GEMINI_PROMPT;
+    const prompt = `${introText}
 
-Wochenplan ${weekRange} (${totalMealsPlanned} Mahlzeiten):
-
-${ingredientsList}
-
-Hinweis: Die Mengen wurden bereits für alle geplanten Mahlzeiten zusammengerechnet.`;
+${ingredientsList}`;
     
     try {
       await navigator.clipboard.writeText(prompt);
+      
+      // Mark ingredients as sent in the backend
+      const ingredientNames = ingredientsToSend.map(ing => ing.name.toLowerCase());
+      try {
+        const result = await mealPlansApi.markIngredientsSent(currentWeekStart, ingredientNames);
+        onSentIngredientsChange(new Set(result.sentIngredients));
+      } catch (error) {
+        console.error('Error marking ingredients as sent:', error);
+      }
+      
       toast.success('Prompt in Zwischenablage kopiert!', {
-        description: 'Füge ihn in Gemini ein und sende ab.',
+        description: `${ingredientsToSend.length} Zutaten werden an Gemini gesendet.`,
       });
       window.open('https://gemini.google.com/app', '_blank');
     } catch (err) {
       toast.error('Konnte nicht in Zwischenablage kopieren');
       console.error('Clipboard error:', err);
+    }
+  };
+  
+  // Reset sent ingredients
+  const resetSentIngredients = async () => {
+    try {
+      await mealPlansApi.resetSentIngredients(currentWeekStart);
+      onSentIngredientsChange(new Set());
+      toast.success('Gesendete Zutaten zurückgesetzt');
+    } catch (error) {
+      console.error('Error resetting sent ingredients:', error);
+      toast.error('Fehler beim Zurücksetzen');
     }
   };
   
@@ -460,10 +544,20 @@ Hinweis: Die Mengen wurden bereits für alle geplanten Mahlzeiten zusammengerech
         
         {/* Gemini Button */}
         {totalMealsPlanned > 0 && (
-          <Button onClick={sendToGemini} className="gap-2">
-            <ShoppingCart className="h-4 w-4" />
-            Einkaufsliste erstellen ({aggregatedIngredients.length} Zutaten)
-          </Button>
+          <div className="flex gap-2">
+            {newIngredients.length > 0 && (
+              <Button onClick={() => sendToGemini(true)} className="gap-2">
+                <Send className="h-4 w-4" />
+                Neue Zutaten senden ({newIngredients.length})
+              </Button>
+            )}
+            {newIngredients.length === 0 && aggregatedIngredients.length > 0 && (
+              <Button onClick={() => sendToGemini(false)} variant="outline" className="gap-2">
+                <ShoppingCart className="h-4 w-4" />
+                Alle erneut senden ({aggregatedIngredients.length})
+              </Button>
+            )}
+          </div>
         )}
       </div>
       
@@ -556,12 +650,16 @@ Hinweis: Die Mengen wurden bereits für alle geplanten Mahlzeiten zusammengerech
                               <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <h4 className="text-xs font-medium truncate cursor-default flex-1">
+                                    <h4 
+                                      className={`text-xs font-medium truncate flex-1 ${onViewRecipe ? 'cursor-pointer hover:text-primary hover:underline' : 'cursor-default'}`}
+                                      onClick={() => meal.recipe && onViewRecipe?.(meal.recipe)}
+                                    >
                                       {meal.recipe.title}
                                     </h4>
                                   </TooltipTrigger>
                                   <TooltipContent>
                                     <p>{meal.recipe.title}</p>
+                                    {onViewRecipe && <p className="text-xs text-muted-foreground">Klicken für Details</p>}
                                   </TooltipContent>
                                 </Tooltip>
                               </TooltipProvider>
@@ -626,49 +724,150 @@ Hinweis: Die Mengen wurden bereits für alle geplanten Mahlzeiten zusammengerech
           </div>
           
           {/* Aggregated Ingredients Summary */}
-          {aggregatedIngredients.length > 0 && (
+          {allAggregatedIngredients.length > 0 && (
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <CardTitle className="flex items-center gap-2">
                     <ShoppingCart className="h-5 w-5" />
                     Zusammengefasste Zutaten
                   </CardTitle>
-                  <Badge variant="secondary">{aggregatedIngredients.length} Zutaten</Badge>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {excludedIngredients.size > 0 && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => onExcludedIngredientsChange(new Set())}
+                        className="gap-1"
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                        Gelöschte wiederherstellen ({excludedIngredients.size})
+                      </Button>
+                    )}
+                    {sentIngredients.size > 0 && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={resetSentIngredients}
+                        className="gap-1"
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                        Gesendet zurücksetzen ({alreadySentIngredients.length})
+                      </Button>
+                    )}
+                    <Badge variant="secondary">
+                      {newIngredients.length} neu / {alreadySentIngredients.length} gesendet
+                    </Badge>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                  {aggregatedIngredients.map((ing, index) => (
-                    <TooltipProvider key={index}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="flex items-baseline p-2 rounded-lg bg-muted/50 cursor-default gap-2">
-                            <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">
-                              {ing.totalAmount || '–'}
-                            </span>
-                            <span className="text-sm truncate">{ing.name}</span>
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-xs">
-                          <div className="text-xs">
-                            <p className="font-medium mb-1">Verwendet in:</p>
-                            {ing.sources.map((src, i) => (
-                              <p key={i}>
-                                • {src.recipeTitle} ({src.servings}P): {src.originalAmount}
-                              </p>
-                            ))}
-                          </div>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  ))}
-                </div>
+                {/* New ingredients section */}
+                {newIngredients.length > 0 && (
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                      <Send className="h-4 w-4" />
+                      Neue Zutaten ({newIngredients.length})
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                      {newIngredients.map((ing, index) => (
+                        <TooltipProvider key={index}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="group flex items-center p-2 rounded-lg bg-primary/10 border border-primary/20 gap-2">
+                                <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+                                  {ing.totalAmount || '–'}
+                                </span>
+                                <span className="text-sm truncate flex-1">{ing.name}</span>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleIngredientExclusion(ing.name);
+                                  }}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-xs">
+                              <div className="text-xs">
+                                <p className="font-medium mb-1">Verwendet in:</p>
+                                {ing.sources.map((src, i) => (
+                                  <p key={i}>
+                                    • {src.recipeTitle} ({src.servings}P): {src.originalAmount}
+                                  </p>
+                                ))}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 
-                <div className="mt-4 pt-4 border-t flex justify-end">
-                  <Button onClick={sendToGemini} className="gap-2">
+                {/* Already sent ingredients section */}
+                {alreadySentIngredients.length > 0 && (
+                  <div className={newIngredients.length > 0 ? 'pt-4 border-t' : ''}>
+                    <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-500" />
+                      Bereits gesendet ({alreadySentIngredients.length})
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                      {alreadySentIngredients.map((ing, index) => (
+                        <TooltipProvider key={index}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="group flex items-center p-2 rounded-lg bg-muted/30 gap-2 opacity-60">
+                                <Check className="h-3 w-3 text-green-500 flex-shrink-0" />
+                                <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+                                  {ing.totalAmount || '–'}
+                                </span>
+                                <span className="text-sm truncate flex-1">{ing.name}</span>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleIngredientExclusion(ing.name);
+                                  }}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-xs">
+                              <div className="text-xs">
+                                <p className="font-medium mb-1 text-green-600">✓ Bereits an Gemini gesendet</p>
+                                <p className="font-medium mb-1 mt-2">Verwendet in:</p>
+                                {ing.sources.map((src, i) => (
+                                  <p key={i}>
+                                    • {src.recipeTitle} ({src.servings}P): {src.originalAmount}
+                                  </p>
+                                ))}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                <div className="mt-4 pt-4 border-t flex justify-end gap-2 flex-wrap">
+                  {newIngredients.length > 0 && (
+                    <Button onClick={() => sendToGemini(true)} className="gap-2">
+                      <Send className="h-4 w-4" />
+                      Neue Zutaten senden ({newIngredients.length})
+                    </Button>
+                  )}
+                  <Button onClick={() => sendToGemini(false)} variant="outline" className="gap-2">
                     <ShoppingCart className="h-4 w-4" />
-                    An Gemini senden
+                    Alle senden ({aggregatedIngredients.length})
                   </Button>
                 </div>
               </CardContent>

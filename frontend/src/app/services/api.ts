@@ -319,6 +319,7 @@ export interface MealSlotData {
 export interface MealPlanData {
   id: string | null;
   weekStart: string;
+  sentIngredients: string[];
   meals: MealSlotData[];
 }
 
@@ -365,6 +366,41 @@ export const mealPlansApi = {
     const dateStr = weekStart.toISOString().split('T')[0];
     await fetchApi<{ message: string }>(`/mealplans/${dateStr}`, {
       method: 'DELETE',
+    });
+  },
+
+  // Mark ingredients as sent to Gemini
+  markIngredientsSent: async (weekStart: Date, ingredients: string[]): Promise<{ sentIngredients: string[] }> => {
+    const dateStr = weekStart.toISOString().split('T')[0];
+    return fetchApi<{ sentIngredients: string[] }>(`/mealplans/${dateStr}/sent-ingredients`, {
+      method: 'POST',
+      body: JSON.stringify({ ingredients }),
+    });
+  },
+
+  // Reset sent ingredients for a week
+  resetSentIngredients: async (weekStart: Date): Promise<void> => {
+    const dateStr = weekStart.toISOString().split('T')[0];
+    await fetchApi<{ message: string }>(`/mealplans/${dateStr}/sent-ingredients`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+// Settings API
+export interface SettingsData {
+  geminiPrompt: string;
+}
+
+export const settingsApi = {
+  getGeminiPrompt: async (): Promise<SettingsData> => {
+    return fetchApi<SettingsData>('/settings/gemini-prompt');
+  },
+
+  updateGeminiPrompt: async (prompt: string): Promise<SettingsData> => {
+    return fetchApi<SettingsData>('/settings/gemini-prompt', {
+      method: 'PUT',
+      body: JSON.stringify({ geminiPrompt: prompt }),
     });
   },
 };

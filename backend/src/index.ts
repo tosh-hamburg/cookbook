@@ -10,6 +10,7 @@ import collectionsRoutes from './routes/collections';
 import usersRoutes from './routes/users';
 import importRoutes from './routes/import';
 import mealplansRoutes from './routes/mealplans';
+import settingsRoutes from './routes/settings';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -36,6 +37,7 @@ app.use('/api/collections', collectionsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/import', importRoutes);
 app.use('/api/mealplans', mealplansRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -75,24 +77,6 @@ async function main() {
   try {
     await prisma.$connect();
     console.log('Datenbankverbindung hergestellt');
-
-    // Create default admin user if not exists
-    const adminExists = await prisma.user.findUnique({
-      where: { username: 'admin' }
-    });
-
-    if (!adminExists) {
-      const bcrypt = require('bcryptjs');
-      const hashedPassword = await bcrypt.hash('admin123', 10);
-      await prisma.user.create({
-        data: {
-          username: 'admin',
-          password: hashedPassword,
-          role: 'admin'
-        }
-      });
-      console.log('Admin-Benutzer erstellt (admin/admin123)');
-    }
 
     // Create default categories if not exist
     const defaultCategories = ['Vorspeise', 'Hauptgericht', 'Dessert', 'Snack', 'Getränk'];

@@ -28,6 +28,7 @@ function transformMealPlan(mealPlan: any) {
   return {
     id: mealPlan.id,
     weekStart: mealPlan.weekStart.toISOString(),
+    sentIngredients: mealPlan.sentIngredients || [],
     meals: mealPlan.meals.map((slot: any) => ({
       dayIndex: slot.dayIndex,
       mealType: slot.mealType,
@@ -85,6 +86,7 @@ router.get('/:weekStart', authenticateToken, async (req: AuthRequest, res: Respo
       return res.json({
         id: null,
         weekStart: weekStart.toISOString(),
+        sentIngredients: [],
         meals: []
       });
     }
@@ -247,6 +249,98 @@ router.patch('/:weekStart/slot', authenticateToken, async (req: AuthRequest, res
   } catch (error) {
     console.error('Update meal slot error:', error);
     res.status(500).json({ error: 'Fehler beim Speichern der Mahlzeit' });
+  }
+});
+
+// Mark ingredients as sent to Gemini
+router.post('/:weekStart/sent-ingredients', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const prisma = req.app.locals.prisma as PrismaClient;
+    const userId = req.user!.id;
+    const weekStartParam = req.params.weekStart as string;
+    const { ingredients } = req.body;
+
+    // Parse and normalize the week start date
+    const weekStart = normalizeWeekStart(new Date(weekStartParam));
+
+    if (isNaN(weekStart.getTime())) {
+      return res.status(400).json({ error: 'Ungültiges Datum' });
+    }
+
+    if (!Array.isArray(ingredients)) {
+      return res.status(400).json({ error: 'Zutaten müssen ein Array sein' });
+    }
+
+    // Get or create meal plan
+    const mealPlan = await prisma.mealPlan.upsert({
+      where: {
+        userId_weekStart: {
+          userId,
+          weekStart
+        }
+      },
+      create: {
+        userId,
+        weekStart,
+        sentIngredients: ingredients
+      },
+      update: {
+        // Merge new ingredients with existing ones (avoid duplicates)
+        sentIngredients: {
+          push: ingredients
+        }
+      }
+    });
+
+    // Get unique ingredients
+    const uniqueIngredients = [...new Set(mealPlan.sentIngredients)];
+    
+    // Update with unique ingredients if there were duplicates
+    if (uniqueIngredients.length !== mealPlan.sentIngredients.length) {
+      await prisma.mealPlan.update({
+        where: { id: mealPlan.id },
+        data: { sentIngredients: uniqueIngredients }
+      });
+    }
+
+    res.json({ 
+      sentIngredients: uniqueIngredients,
+      message: `${ingredients.length} Zutaten als gesendet markiert`
+    });
+  } catch (error) {
+    console.error('Mark sent ingredients error:', error);
+    res.status(500).json({ error: 'Fehler beim Markieren der Zutaten' });
+  }
+});
+
+// Reset sent ingredients for a week
+router.delete('/:weekStart/sent-ingredients', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const prisma = req.app.locals.prisma as PrismaClient;
+    const userId = req.user!.id;
+    const weekStartParam = req.params.weekStart as string;
+
+    // Parse and normalize the week start date
+    const weekStart = normalizeWeekStart(new Date(weekStartParam));
+
+    if (isNaN(weekStart.getTime())) {
+      return res.status(400).json({ error: 'Ungültiges Datum' });
+    }
+
+    await prisma.mealPlan.updateMany({
+      where: {
+        userId,
+        weekStart
+      },
+      data: {
+        sentIngredients: []
+      }
+    });
+
+    res.json({ message: 'Gesendete Zutaten zurückgesetzt' });
+  } catch (error) {
+    console.error('Reset sent ingredients error:', error);
+    res.status(500).json({ error: 'Fehler beim Zurücksetzen der Zutaten' });
   }
 });
 
