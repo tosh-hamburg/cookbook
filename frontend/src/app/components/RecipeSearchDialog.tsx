@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Search, Filter, X, Check } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Search, Filter, X, Check, ChevronDown } from 'lucide-react';
 import type { Recipe } from '@/app/types/recipe';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
@@ -20,6 +20,10 @@ import {
 } from '@/app/components/ui/select';
 import { ScrollArea } from '@/app/components/ui/scroll-area';
 import { categoriesApi, collectionsApi, type Collection } from '@/app/services/api';
+
+// Number of recipes to show initially and per "load more"
+const INITIAL_DISPLAY_COUNT = 20;
+const LOAD_MORE_COUNT = 20;
 
 interface RecipeSearchDialogProps {
   open: boolean;
@@ -43,6 +47,7 @@ export function RecipeSearchDialog({
   const [selectedCollection, setSelectedCollection] = useState<string>('');
   const [categories, setCategories] = useState<string[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
+  const [displayCount, setDisplayCount] = useState(INITIAL_DISPLAY_COUNT);
 
   useEffect(() => {
     const loadFilters = async () => {
@@ -68,8 +73,14 @@ export function RecipeSearchDialog({
       setSearchQuery('');
       setSelectedCategory('');
       setSelectedCollection('');
+      setDisplayCount(INITIAL_DISPLAY_COUNT);
     }
   }, [open]);
+
+  // Reset display count when filters change
+  useEffect(() => {
+    setDisplayCount(INITIAL_DISPLAY_COUNT);
+  }, [searchQuery, selectedCategory, selectedCollection]);
 
   const filteredRecipes = useMemo(() => {
     return recipes.filter(recipe => {
@@ -89,6 +100,17 @@ export function RecipeSearchDialog({
       return matchesSearch && matchesCategory && matchesCollection;
     });
   }, [recipes, searchQuery, selectedCategory, selectedCollection]);
+
+  // Only display a limited number of recipes for performance
+  const displayedRecipes = useMemo(() => {
+    return filteredRecipes.slice(0, displayCount);
+  }, [filteredRecipes, displayCount]);
+
+  const hasMoreRecipes = displayedRecipes.length < filteredRecipes.length;
+
+  const loadMore = useCallback(() => {
+    setDisplayCount(prev => prev + LOAD_MORE_COUNT);
+  }, []);
 
   const clearFilters = () => {
     setSearchQuery('');
@@ -191,7 +213,7 @@ export function RecipeSearchDialog({
             </div>
           ) : (
             <div className="space-y-2 py-2">
-              {filteredRecipes.map((recipe) => (
+              {displayedRecipes.map((recipe) => (
                 <button
                   key={recipe.id}
                   onClick={() => handleSelect(recipe)}
@@ -204,6 +226,7 @@ export function RecipeSearchDialog({
                         src={recipe.images[0]}
                         alt={recipe.title}
                         className="w-full h-full object-cover"
+                        loading="lazy"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-2xl">
@@ -240,12 +263,23 @@ export function RecipeSearchDialog({
                   <Check className="h-5 w-5 text-primary opacity-0 group-hover:opacity-100" />
                 </button>
               ))}
+              
+              {/* Load More Button */}
+              {hasMoreRecipes && (
+                <div className="py-3 text-center">
+                  <Button variant="outline" onClick={loadMore} className="w-full">
+                    <ChevronDown className="h-4 w-4 mr-2" />
+                    Weitere {Math.min(LOAD_MORE_COUNT, filteredRecipes.length - displayedRecipes.length)} Rezepte laden
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </ScrollArea>
 
         <div className="text-sm text-muted-foreground text-center pt-2 border-t">
-          {filteredRecipes.length} von {recipes.length} Rezepten
+          {displayedRecipes.length} von {filteredRecipes.length} Rezepten angezeigt
+          {filteredRecipes.length < recipes.length && ` (${recipes.length} insgesamt)`}
         </div>
       </DialogContent>
     </Dialog>

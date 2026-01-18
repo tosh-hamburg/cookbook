@@ -458,6 +458,8 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const { url } = req.body;
     
+    console.log('Import request received for URL:', url);
+    
     if (!url || typeof url !== 'string') {
       return res.status(400).json({ error: 'URL ist erforderlich' });
     }
@@ -470,23 +472,44 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'Ungültige URL' });
     }
     
-    // Fetch the page
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
-      },
-    });
+    console.log('Fetching page from:', parsedUrl.hostname);
+    
+    // Fetch the page with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
+    let response;
+    try {
+      response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
+        },
+        signal: controller.signal,
+      });
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      console.error('Fetch error:', fetchError);
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+        return res.status(408).json({ error: 'Zeitüberschreitung beim Laden der Seite' });
+      }
+      return res.status(400).json({ error: `Konnte Seite nicht abrufen: ${fetchError instanceof Error ? fetchError.message : 'Netzwerkfehler'}` });
+    }
+    clearTimeout(timeoutId);
+    
+    console.log('Fetch response status:', response.status);
     
     if (!response.ok) {
       return res.status(400).json({ error: `Konnte Seite nicht laden: ${response.status}` });
     }
     
     const html = await response.text();
+    console.log('Page fetched, HTML length:', html.length);
     
     // Try JSON-LD first
     let recipe = parseJsonLd(html);
+    console.log('JSON-LD parsing result:', recipe ? `Found recipe: ${recipe.title}` : 'No JSON-LD found');
     
     // For Chefkoch: Always try to get additional images from HTML
     if (parsedUrl.hostname.includes('chefkoch')) {
@@ -579,10 +602,12 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
       sourceUrl: url,
     };
     
+    console.log('Import successful:', result.title);
     res.json(result);
   } catch (error) {
     console.error('Import error:', error);
-    res.status(500).json({ error: 'Fehler beim Importieren des Rezepts' });
+    const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
+    res.status(500).json({ error: `Fehler beim Importieren: ${errorMessage}` });
   }
 });
 

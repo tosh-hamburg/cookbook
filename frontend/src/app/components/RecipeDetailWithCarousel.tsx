@@ -404,11 +404,13 @@ ${ingredientsList}`;
           )}
         </CardHeader>
         <CardContent>
-          <ul className="space-y-2">
+          <ul className="space-y-1">
             {scaledIngredients.map((ingredient, index) => (
-              <li key={index} className="flex justify-between items-center py-2">
-                <span>{ingredient.name}</span>
-                <Badge variant="secondary">{ingredient.amount}</Badge>
+              <li key={index} className="flex items-baseline py-1.5 border-b border-dashed border-muted last:border-0">
+                <span className="w-24 sm:w-28 flex-shrink-0 font-medium text-right pr-4 text-muted-foreground">
+                  {ingredient.amount}
+                </span>
+                <span className="flex-1">{ingredient.name}</span>
               </li>
             ))}
           </ul>

@@ -38,8 +38,9 @@ export function RecipeImport({ onImport }: RecipeImportProps) {
       setOpen(false);
       setUrl('');
     } catch (error) {
-      toast.error('Fehler beim Importieren des Rezepts');
-      console.error(error);
+      const errorMessage = error instanceof Error ? error.message : 'Fehler beim Importieren des Rezepts';
+      toast.error(errorMessage);
+      console.error('Import error:', error);
     } finally {
       setLoading(false);
     }

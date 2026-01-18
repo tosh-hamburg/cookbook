@@ -638,16 +638,16 @@ Hinweis: Die Mengen wurden bereits für alle geplanten Mahlzeiten zusammengerech
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                   {aggregatedIngredients.map((ing, index) => (
                     <TooltipProvider key={index}>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <div className="flex justify-between items-center p-2 rounded-lg bg-muted/50 cursor-default">
-                            <span className="text-sm truncate">{ing.name}</span>
-                            <Badge variant="outline" className="ml-2 flex-shrink-0">
+                          <div className="flex items-baseline p-2 rounded-lg bg-muted/50 cursor-default gap-2">
+                            <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">
                               {ing.totalAmount || '–'}
-                            </Badge>
+                            </span>
+                            <span className="text-sm truncate">{ing.name}</span>
                           </div>
                         </TooltipTrigger>
                         <TooltipContent side="top" className="max-w-xs">
