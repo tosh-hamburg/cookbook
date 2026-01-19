@@ -258,20 +258,22 @@ export function WeeklyPlanner({
         const data = await mealPlansApi.getByWeek(currentWeekStart);
         const plan = mealPlanDataToWeekPlan(data, currentWeekStart, recipes);
         setWeekPlan(plan);
-        // Load sent ingredients from API
+        // Load sent and excluded ingredients from API
         onSentIngredientsChange(new Set(data.sentIngredients || []));
+        onExcludedIngredientsChange(new Set(data.excludedIngredients || []));
       } catch (error) {
         console.error('Error loading meal plan:', error);
         // On error, start with empty plan
         setWeekPlan(createEmptyWeekPlan(currentWeekStart));
         onSentIngredientsChange(new Set());
+        onExcludedIngredientsChange(new Set());
       } finally {
         setIsLoading(false);
       }
     };
     
     loadMealPlan();
-  }, [currentWeekStart, recipes, onSentIngredientsChange]);
+  }, [currentWeekStart, recipes, onSentIngredientsChange, onExcludedIngredientsChange]);
   
   // Save slot to backend
   const saveSlot = useCallback(async (
@@ -296,32 +298,30 @@ export function WeeklyPlanner({
     const newStart = new Date(currentWeekStart);
     newStart.setDate(newStart.getDate() - 7);
     onWeekStartChange(newStart);
-    onExcludedIngredientsChange(new Set()); // Reset exclusions when changing week
-    // sentIngredients will be loaded from API in useEffect
-  }, [currentWeekStart, onWeekStartChange, onExcludedIngredientsChange]);
+    // excludedIngredients and sentIngredients will be loaded from API in useEffect
+  }, [currentWeekStart, onWeekStartChange]);
   
   // Navigate to next week
   const goToNextWeek = useCallback(() => {
     const newStart = new Date(currentWeekStart);
     newStart.setDate(newStart.getDate() + 7);
     onWeekStartChange(newStart);
-    onExcludedIngredientsChange(new Set()); // Reset exclusions when changing week
-    // sentIngredients will be loaded from API in useEffect
-  }, [currentWeekStart, onWeekStartChange, onExcludedIngredientsChange]);
+    // excludedIngredients and sentIngredients will be loaded from API in useEffect
+  }, [currentWeekStart, onWeekStartChange]);
   
   // Go to current week
   const goToCurrentWeek = useCallback(() => {
     const start = getCurrentWeekStart();
     onWeekStartChange(start);
-    onExcludedIngredientsChange(new Set()); // Reset exclusions when changing week
-  }, [onWeekStartChange, onExcludedIngredientsChange]);
+    // excludedIngredients and sentIngredients will be loaded from API in useEffect
+  }, [onWeekStartChange]);
   
   // Go to next upcoming week
   const goToNextUpcomingWeek = useCallback(() => {
     const start = getNextWeekStart();
     onWeekStartChange(start);
-    onExcludedIngredientsChange(new Set()); // Reset exclusions when changing week
-  }, [onWeekStartChange, onExcludedIngredientsChange]);
+    // excludedIngredients and sentIngredients will be loaded from API in useEffect
+  }, [onWeekStartChange]);
   
   // Check if currently viewing current week
   const isCurrentWeek = useMemo(() => {
@@ -440,16 +440,34 @@ export function WeeklyPlanner({
     [aggregatedIngredients, sentIngredients]
   );
   
-  // Toggle ingredient exclusion
-  const toggleIngredientExclusion = (ingredientName: string) => {
+  // Toggle ingredient exclusion (save to backend)
+  const toggleIngredientExclusion = async (ingredientName: string) => {
     const normalizedName = ingredientName.toLowerCase();
     const newSet = new Set(excludedIngredients);
-    if (newSet.has(normalizedName)) {
-      newSet.delete(normalizedName);
-    } else {
-      newSet.add(normalizedName);
+    
+    try {
+      if (newSet.has(normalizedName)) {
+        // Restore ingredient
+        newSet.delete(normalizedName);
+        onExcludedIngredientsChange(newSet);
+        await mealPlansApi.restoreIngredient(currentWeekStart, normalizedName);
+      } else {
+        // Exclude ingredient
+        newSet.add(normalizedName);
+        onExcludedIngredientsChange(newSet);
+        await mealPlansApi.excludeIngredients(currentWeekStart, [normalizedName]);
+      }
+    } catch (error) {
+      console.error('Error toggling ingredient exclusion:', error);
+      // Revert on error
+      if (newSet.has(normalizedName)) {
+        newSet.delete(normalizedName);
+      } else {
+        newSet.add(normalizedName);
+      }
+      onExcludedIngredientsChange(newSet);
+      toast.error('Fehler beim Aktualisieren der Zutatenliste');
     }
-    onExcludedIngredientsChange(newSet);
   };
   
   // Count total meals planned
@@ -517,6 +535,18 @@ ${ingredientsList}`;
       toast.success('Gesendete Zutaten zurückgesetzt');
     } catch (error) {
       console.error('Error resetting sent ingredients:', error);
+      toast.error('Fehler beim Zurücksetzen');
+    }
+  };
+  
+  // Reset excluded ingredients
+  const resetExcludedIngredients = async () => {
+    try {
+      await mealPlansApi.resetExcludedIngredients(currentWeekStart);
+      onExcludedIngredientsChange(new Set());
+      toast.success('Ausgeschlossene Zutaten wiederhergestellt');
+    } catch (error) {
+      console.error('Error resetting excluded ingredients:', error);
       toast.error('Fehler beim Zurücksetzen');
     }
   };
@@ -737,7 +767,7 @@ ${ingredientsList}`;
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => onExcludedIngredientsChange(new Set())}
+                        onClick={resetExcludedIngredients}
                         className="gap-1"
                       >
                         <RotateCcw className="h-3 w-3" />

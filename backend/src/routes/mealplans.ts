@@ -29,6 +29,7 @@ function transformMealPlan(mealPlan: any) {
     id: mealPlan.id,
     weekStart: mealPlan.weekStart.toISOString(),
     sentIngredients: mealPlan.sentIngredients || [],
+    excludedIngredients: mealPlan.excludedIngredients || [],
     meals: mealPlan.meals.map((slot: any) => ({
       dayIndex: slot.dayIndex,
       mealType: slot.mealType,
@@ -87,6 +88,7 @@ router.get('/:weekStart', authenticateToken, async (req: AuthRequest, res: Respo
         id: null,
         weekStart: weekStart.toISOString(),
         sentIngredients: [],
+        excludedIngredients: [],
         meals: []
       });
     }
@@ -341,6 +343,148 @@ router.delete('/:weekStart/sent-ingredients', authenticateToken, async (req: Aut
   } catch (error) {
     console.error('Reset sent ingredients error:', error);
     res.status(500).json({ error: 'Fehler beim Zurücksetzen der Zutaten' });
+  }
+});
+
+// Exclude ingredients from shopping list
+router.post('/:weekStart/excluded-ingredients', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const prisma = req.app.locals.prisma as PrismaClient;
+    const userId = req.user!.id;
+    const weekStartParam = req.params.weekStart as string;
+    const { ingredients } = req.body;
+
+    // Parse and normalize the week start date
+    const weekStart = normalizeWeekStart(new Date(weekStartParam));
+
+    if (isNaN(weekStart.getTime())) {
+      return res.status(400).json({ error: 'Ungültiges Datum' });
+    }
+
+    if (!Array.isArray(ingredients)) {
+      return res.status(400).json({ error: 'Zutaten müssen ein Array sein' });
+    }
+
+    // Get or create meal plan
+    const mealPlan = await prisma.mealPlan.upsert({
+      where: {
+        userId_weekStart: {
+          userId,
+          weekStart
+        }
+      },
+      create: {
+        userId,
+        weekStart,
+        excludedIngredients: ingredients
+      },
+      update: {
+        // Merge new ingredients with existing ones (avoid duplicates)
+        excludedIngredients: {
+          push: ingredients
+        }
+      }
+    });
+
+    // Get unique ingredients
+    const uniqueIngredients = [...new Set(mealPlan.excludedIngredients)];
+    
+    // Update with unique ingredients if there were duplicates
+    if (uniqueIngredients.length !== mealPlan.excludedIngredients.length) {
+      await prisma.mealPlan.update({
+        where: { id: mealPlan.id },
+        data: { excludedIngredients: uniqueIngredients }
+      });
+    }
+
+    res.json({ 
+      excludedIngredients: uniqueIngredients,
+      message: `${ingredients.length} Zutaten ausgeschlossen`
+    });
+  } catch (error) {
+    console.error('Exclude ingredients error:', error);
+    res.status(500).json({ error: 'Fehler beim Ausschließen der Zutaten' });
+  }
+});
+
+// Remove ingredient from excluded list (restore)
+router.delete('/:weekStart/excluded-ingredients/:ingredientName', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const prisma = req.app.locals.prisma as PrismaClient;
+    const userId = req.user!.id;
+    const weekStartParam = req.params.weekStart as string;
+    const ingredientNameParam = req.params.ingredientName as string;
+    const ingredientName = decodeURIComponent(ingredientNameParam).toLowerCase();
+
+    // Parse and normalize the week start date
+    const weekStart = normalizeWeekStart(new Date(weekStartParam));
+
+    if (isNaN(weekStart.getTime())) {
+      return res.status(400).json({ error: 'Ungültiges Datum' });
+    }
+
+    // Find existing meal plan
+    const mealPlan = await prisma.mealPlan.findUnique({
+      where: {
+        userId_weekStart: {
+          userId,
+          weekStart
+        }
+      }
+    });
+
+    if (!mealPlan) {
+      return res.status(404).json({ error: 'Wochenplan nicht gefunden' });
+    }
+
+    // Remove ingredient from excluded list
+    const updatedExcluded = mealPlan.excludedIngredients.filter(
+      (ing: string) => ing.toLowerCase() !== ingredientName
+    );
+
+    await prisma.mealPlan.update({
+      where: { id: mealPlan.id },
+      data: { excludedIngredients: updatedExcluded }
+    });
+
+    res.json({ 
+      excludedIngredients: updatedExcluded,
+      message: 'Zutat wiederhergestellt'
+    });
+  } catch (error) {
+    console.error('Restore ingredient error:', error);
+    res.status(500).json({ error: 'Fehler beim Wiederherstellen der Zutat' });
+  }
+});
+
+// Reset all excluded ingredients for a week
+router.delete('/:weekStart/excluded-ingredients', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const prisma = req.app.locals.prisma as PrismaClient;
+    const userId = req.user!.id;
+    const weekStartParam = req.params.weekStart as string;
+
+    // Parse and normalize the week start date
+    const weekStart = normalizeWeekStart(new Date(weekStartParam));
+
+    if (isNaN(weekStart.getTime())) {
+      return res.status(400).json({ error: 'Ungültiges Datum' });
+    }
+
+    await prisma.mealPlan.updateMany({
+      where: {
+        userId,
+        weekStart
+      },
+      data: {
+        excludedIngredients: []
+      }
+    });
+
+    res.json({ message: 'Ausgeschlossene Zutaten zurückgesetzt' });
+  } catch (error) {
+    console.error('Reset excluded ingredients error:', error);
+    res.status(500).json({ error: 'Fehler beim Zurücksetzen der ausgeschlossenen Zutaten' });
   }
 });
 

@@ -91,14 +91,15 @@ model RecipeCollection {
 
 // Wochenplaner
 model MealPlan {
-  id              String     @id @default(uuid())
-  userId          String
-  weekStart       DateTime   // Montag der Woche (ohne Uhrzeit)
-  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  meals           MealSlot[]
-  sentIngredients String[]   // Bereits an Gemini gesendete Zutaten (lowercase)
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
+  id                  String     @id @default(uuid())
+  userId              String
+  weekStart           DateTime   // Montag der Woche (ohne Uhrzeit)
+  user                User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  meals               MealSlot[]
+  sentIngredients     String[]   // Bereits an Gemini gesendete Zutaten (lowercase)
+  excludedIngredients String[]   // Ausgeschlossene Zutaten (lowercase)
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
 
   @@unique([userId, weekStart]) // Ein Plan pro Benutzer pro Woche
 }

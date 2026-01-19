@@ -56,6 +56,14 @@ async function fetchApi<T>(
   });
 
   if (!response.ok) {
+    // Bei abgelaufenem Token (401) automatisch abmelden
+    if (response.status === 401) {
+      removeToken();
+      // Seite neu laden, um zur Login-Seite zu gelangen
+      window.location.reload();
+      throw new Error('Token abgelaufen - Automatische Abmeldung');
+    }
+    
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.error || `HTTP error ${response.status}`);
   }
@@ -320,6 +328,7 @@ export interface MealPlanData {
   id: string | null;
   weekStart: string;
   sentIngredients: string[];
+  excludedIngredients: string[];
   meals: MealSlotData[];
 }
 
@@ -382,6 +391,31 @@ export const mealPlansApi = {
   resetSentIngredients: async (weekStart: Date): Promise<void> => {
     const dateStr = weekStart.toISOString().split('T')[0];
     await fetchApi<{ message: string }>(`/mealplans/${dateStr}/sent-ingredients`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Exclude ingredients from shopping list
+  excludeIngredients: async (weekStart: Date, ingredients: string[]): Promise<{ excludedIngredients: string[] }> => {
+    const dateStr = weekStart.toISOString().split('T')[0];
+    return fetchApi<{ excludedIngredients: string[] }>(`/mealplans/${dateStr}/excluded-ingredients`, {
+      method: 'POST',
+      body: JSON.stringify({ ingredients }),
+    });
+  },
+
+  // Restore a single excluded ingredient
+  restoreIngredient: async (weekStart: Date, ingredientName: string): Promise<{ excludedIngredients: string[] }> => {
+    const dateStr = weekStart.toISOString().split('T')[0];
+    return fetchApi<{ excludedIngredients: string[] }>(`/mealplans/${dateStr}/excluded-ingredients/${encodeURIComponent(ingredientName)}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Reset all excluded ingredients for a week
+  resetExcludedIngredients: async (weekStart: Date): Promise<void> => {
+    const dateStr = weekStart.toISOString().split('T')[0];
+    await fetchApi<{ message: string }>(`/mealplans/${dateStr}/excluded-ingredients`, {
       method: 'DELETE',
     });
   },
