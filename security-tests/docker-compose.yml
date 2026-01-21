@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  security-tests:
+    build: .
+    container_name: cookbook-security-tests
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      # Gegen lokale Backend-Instanz testen
+      - API_URL=http://cookbook-backend:4002/api
+      
+      # Test-Credentials (anpassen!)
+      - TEST_USER=security_test_user
+      - TEST_PASSWORD=TestPassword123!
+      - ADMIN_USER=security_test_admin
+      - ADMIN_PASSWORD=AdminPassword123!
+      
+      # DRY-RUN für erste Tests
+      - DRY_RUN=false
+    # Nur sichere Tests standardmäßig
+    command: npm run test:safe
+    
+    # Gleisches Netzwerk wie das Backend
+    networks:
+      - cookbook_default
+
+# Das Cookbook-Netzwerk verwenden
+networks:
+  cookbook_default:
+    external: true

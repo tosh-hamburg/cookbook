@@ -1,0 +1,22 @@
+{
+  "name": "cookbook-security-tests",
+  "version": "1.0.0",
+  "description": "Security Tests für Cookbook API",
+  "scripts": {
+    "test": "jest --runInBand --verbose",
+    "test:safe": "jest --testPathPattern='(auth|api)\\.test' --runInBand --verbose",
+    "test:destructive": "jest --testPathPattern='(authz|input)\\.test' --runInBand --verbose",
+    "test:auth": "jest --testPathPattern=auth.test --runInBand",
+    "test:authz": "jest --testPathPattern=authz.test --runInBand",
+    "test:input": "jest --testPathPattern=input.test --runInBand",
+    "test:api": "jest --testPathPattern=api.test --runInBand",
+    "test:report": "jest --json --outputFile=security-report.json --runInBand"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^22.0.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2",
+    "typescript": "^5.6.3"
+  }
+}

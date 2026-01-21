@@ -40,6 +40,7 @@ services:
       PORT: ${BACKEND_PORT:-4002}
       NODE_ENV: ${NODE_ENV:-development}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://cookbook.gout-diary.com,http://localhost:3002}
 
   frontend:
     image: node:20-slim
