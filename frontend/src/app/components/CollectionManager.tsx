@@ -25,8 +25,10 @@ import {
 } from '@/app/components/ui/alert-dialog';
 import { collectionsApi, type Collection } from '@/app/services/api';
 import { toast } from 'sonner';
+import { useTranslation } from '@/app/i18n';
 
 export function CollectionManager() {
+  const { t } = useTranslation();
   const [collections, setCollections] = useState<Collection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -42,7 +44,7 @@ export function CollectionManager() {
       setCollections(data);
     } catch (error) {
       console.error('Error loading collections:', error);
-      toast.error('Fehler beim Laden der Sammlungen');
+      toast.error(t.collectionManager.loadError);
     } finally {
       setIsLoading(false);
     }
@@ -54,26 +56,26 @@ export function CollectionManager() {
 
   const handleAdd = async () => {
     if (!newName.trim()) {
-      toast.error('Name ist erforderlich');
+      toast.error(t.collectionManager.createError);
       return;
     }
 
     try {
       await collectionsApi.create(newName.trim(), newDescription.trim() || undefined);
-      toast.success('Sammlung erstellt');
+      toast.success(t.collectionManager.created);
       setShowAddDialog(false);
       setNewName('');
       setNewDescription('');
       loadCollections();
     } catch (error) {
       console.error('Error creating collection:', error);
-      toast.error('Fehler beim Erstellen der Sammlung');
+      toast.error(t.collectionManager.createError);
     }
   };
 
   const handleEdit = async () => {
     if (!selectedCollection || !newName.trim()) {
-      toast.error('Name ist erforderlich');
+      toast.error(t.collectionManager.createError);
       return;
     }
 
@@ -82,7 +84,7 @@ export function CollectionManager() {
         name: newName.trim(),
         description: newDescription.trim() || undefined,
       });
-      toast.success('Sammlung aktualisiert');
+      toast.success(t.collectionManager.created);
       setShowEditDialog(false);
       setSelectedCollection(null);
       setNewName('');
@@ -90,7 +92,7 @@ export function CollectionManager() {
       loadCollections();
     } catch (error) {
       console.error('Error updating collection:', error);
-      toast.error('Fehler beim Aktualisieren der Sammlung');
+      toast.error(t.collectionManager.createError);
     }
   };
 
@@ -99,13 +101,13 @@ export function CollectionManager() {
 
     try {
       await collectionsApi.delete(selectedCollection.id);
-      toast.success('Sammlung gelöscht');
+      toast.success(t.collectionManager.deleted);
       setShowDeleteDialog(false);
       setSelectedCollection(null);
       loadCollections();
     } catch (error) {
       console.error('Error deleting collection:', error);
-      toast.error('Fehler beim Löschen der Sammlung');
+      toast.error(t.collectionManager.deleteError);
     }
   };
 
@@ -122,16 +124,16 @@ export function CollectionManager() {
   };
 
   if (isLoading) {
-    return <div className="text-center py-8">Laden...</div>;
+    return <div className="text-center py-8">{t.loading}</div>;
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Sammlungen verwalten</h2>
+        <h2 className="text-xl font-semibold">{t.collectionManager.title}</h2>
         <Button onClick={() => setShowAddDialog(true)}>
           <Plus className="h-4 w-4 mr-2" />
-          Neue Sammlung
+          {t.collectionManager.newCollection}
         </Button>
       </div>
 
@@ -139,8 +141,7 @@ export function CollectionManager() {
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
             <FolderOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Keine Sammlungen vorhanden.</p>
-            <p className="text-sm">Erstellen Sie Ihre erste Sammlung, um Rezepte zu organisieren.</p>
+            <p>{t.collectionManager.noCollections}</p>
           </CardContent>
         </Card>
       ) : (
@@ -173,7 +174,7 @@ export function CollectionManager() {
                   <p className="text-sm text-muted-foreground mb-2">{collection.description}</p>
                 )}
                 <p className="text-sm">
-                  <strong>{collection.recipeCount}</strong> Rezept{collection.recipeCount !== 1 ? 'e' : ''}
+                  <strong>{collection.recipeCount}</strong> {t.categoryManager.recipesCount.replace('{count}', '').trim()}
                 </p>
               </CardContent>
             </Card>
@@ -185,37 +186,27 @@ export function CollectionManager() {
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Neue Sammlung erstellen</DialogTitle>
+            <DialogTitle>{t.collectionManager.newCollection}</DialogTitle>
             <DialogDescription>
-              Erstellen Sie eine neue Sammlung, um Rezepte zu organisieren.
+              {t.collectionManager.description}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name">{t.collectionManager.placeholder}</Label>
               <Input
                 id="name"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                placeholder="z.B. Sommerrezepte"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Beschreibung (optional)</Label>
-              <Textarea
-                id="description"
-                value={newDescription}
-                onChange={(e) => setNewDescription(e.target.value)}
-                placeholder="Beschreibung der Sammlung..."
-                rows={3}
+                placeholder={t.collectionManager.placeholder}
               />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddDialog(false)}>
-              Abbrechen
+              {t.cancel}
             </Button>
-            <Button onClick={handleAdd}>Erstellen</Button>
+            <Button onClick={handleAdd}>{t.collectionManager.create}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -224,32 +215,23 @@ export function CollectionManager() {
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Sammlung bearbeiten</DialogTitle>
+            <DialogTitle>{t.edit}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="edit-name">Name</Label>
+              <Label htmlFor="edit-name">{t.collectionManager.placeholder}</Label>
               <Input
                 id="edit-name"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-description">Beschreibung (optional)</Label>
-              <Textarea
-                id="edit-description"
-                value={newDescription}
-                onChange={(e) => setNewDescription(e.target.value)}
-                rows={3}
-              />
-            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowEditDialog(false)}>
-              Abbrechen
+              {t.cancel}
             </Button>
-            <Button onClick={handleEdit}>Speichern</Button>
+            <Button onClick={handleEdit}>{t.save}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -258,19 +240,18 @@ export function CollectionManager() {
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Sammlung löschen?</AlertDialogTitle>
+            <AlertDialogTitle>{t.collectionManager.confirmDelete}</AlertDialogTitle>
             <AlertDialogDescription>
-              Möchten Sie die Sammlung "{selectedCollection?.name}" wirklich löschen?
-              Die Rezepte bleiben erhalten, werden aber aus dieser Sammlung entfernt.
+              {t.collectionManager.confirmDeleteDescription.replace('{name}', selectedCollection?.name || '')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogCancel>{t.cancel}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Löschen
+              {t.delete}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

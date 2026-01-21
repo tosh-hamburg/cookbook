@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from '@/app/components/ui/select';
 import { categoriesApi, collectionsApi, type Collection } from '@/app/services/api';
+import { useTranslation } from '@/app/i18n';
 
 interface RecipeListProps {
   recipes: Recipe[];
@@ -23,6 +24,7 @@ interface RecipeListProps {
 }
 
 export function RecipeList({ recipes, onSelectRecipe, onCreateNew, onImport }: RecipeListProps) {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedCollection, setSelectedCollection] = useState<string>('');
@@ -73,7 +75,7 @@ export function RecipeList({ recipes, onSelectRecipe, onCreateNew, onImport }: R
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-8">
-        <h1 className="mb-4">Meine Rezepte</h1>
+        <h1 className="mb-4">{t.recipes.myRecipes}</h1>
         
         {/* Search and Actions Row */}
         <div className="flex flex-col sm:flex-row gap-4 mb-4">
@@ -82,7 +84,7 @@ export function RecipeList({ recipes, onSelectRecipe, onCreateNew, onImport }: R
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Rezepte durchsuchen..."
+              placeholder={t.recipes.searchPlaceholder}
               className="pl-10"
             />
           </div>
@@ -90,7 +92,7 @@ export function RecipeList({ recipes, onSelectRecipe, onCreateNew, onImport }: R
             <RecipeImport onImport={onImport} />
             <Button onClick={onCreateNew}>
               <Plus className="h-4 w-4 mr-2" />
-              Neues Rezept
+              {t.recipes.newRecipe}
             </Button>
           </div>
         </div>
@@ -101,10 +103,10 @@ export function RecipeList({ recipes, onSelectRecipe, onCreateNew, onImport }: R
           
           <Select value={selectedCategory || "all"} onValueChange={(val) => setSelectedCategory(val === "all" ? "" : val)}>
             <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Kategorie" />
+              <SelectValue placeholder={t.filters.category} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Alle Kategorien</SelectItem>
+              <SelectItem value="all">{t.filters.allCategories}</SelectItem>
               {categories.map(cat => (
                 <SelectItem key={cat} value={cat}>{cat}</SelectItem>
               ))}
@@ -113,10 +115,10 @@ export function RecipeList({ recipes, onSelectRecipe, onCreateNew, onImport }: R
 
           <Select value={selectedCollection || "all"} onValueChange={(val) => setSelectedCollection(val === "all" ? "" : val)}>
             <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Sammlung" />
+              <SelectValue placeholder={t.filters.collection} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Alle Sammlungen</SelectItem>
+              <SelectItem value="all">{t.filters.allCollections}</SelectItem>
               {collections.map(col => (
                 <SelectItem key={col.id} value={col.id}>{col.name}</SelectItem>
               ))}
@@ -126,7 +128,7 @@ export function RecipeList({ recipes, onSelectRecipe, onCreateNew, onImport }: R
           {hasActiveFilters && (
             <Button variant="ghost" size="sm" onClick={clearFilters}>
               <X className="h-4 w-4 mr-1" />
-              Filter zurücksetzen
+              {t.filters.resetFilters}
             </Button>
           )}
         </div>
@@ -136,13 +138,13 @@ export function RecipeList({ recipes, onSelectRecipe, onCreateNew, onImport }: R
           <div className="flex flex-wrap gap-2 mt-3">
             {selectedCategory && (
               <Badge variant="secondary" className="gap-1">
-                Kategorie: {selectedCategory}
+                {t.filters.category}: {selectedCategory}
                 <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedCategory('')} />
               </Badge>
             )}
             {selectedCollection && (
               <Badge variant="secondary" className="gap-1">
-                Sammlung: {collections.find(c => c.id === selectedCollection)?.name}
+                {t.filters.collection}: {collections.find(c => c.id === selectedCollection)?.name}
                 <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedCollection('')} />
               </Badge>
             )}
@@ -154,15 +156,15 @@ export function RecipeList({ recipes, onSelectRecipe, onCreateNew, onImport }: R
         <div className="text-center py-16">
           <div className="mb-4 text-muted-foreground">
             {searchQuery ? (
-              <p>Keine Rezepte gefunden, die "{searchQuery}" enthalten.</p>
+              <p>{t.recipes.noRecipesSearch} "{searchQuery}".</p>
             ) : (
-              <p>Noch keine Rezepte vorhanden. Erstellen Sie Ihr erstes Rezept!</p>
+              <p>{t.recipes.noRecipes}</p>
             )}
           </div>
           {!searchQuery && (
             <Button onClick={onCreateNew}>
               <Plus className="h-4 w-4 mr-2" />
-              Erstes Rezept erstellen
+              {t.recipes.createFirst}
             </Button>
           )}
         </div>

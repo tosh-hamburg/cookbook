@@ -17,6 +17,7 @@ import {
   AlertDialogTitle,
 } from '@/app/components/ui/alert-dialog';
 import { ImageWithFallback } from '@/app/components/figma/ImageWithFallback';
+import { useTranslation } from '@/app/i18n';
 
 interface RecipeDetailProps {
   recipe: Recipe;
@@ -65,6 +66,7 @@ function scaleIngredientAmount(amount: string, factor: number): string {
 }
 
 export function RecipeDetail({ recipe, onClose, onEdit, onDelete }: RecipeDetailProps) {
+  const { t } = useTranslation();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [currentServings, setCurrentServings] = useState(recipe.servings || 4);
@@ -117,24 +119,24 @@ export function RecipeDetail({ recipe, onClose, onEdit, onDelete }: RecipeDetail
       .join('\n');
     
     // Create Gemini prompt
-    const prompt = `Füge bitte folgende Zutaten zu meiner Einkaufsliste in Google Keep hinzu (erstelle die Liste "Einkaufsliste" falls sie nicht existiert):
+    const prompt = `Please add the following ingredients to my shopping list in Google Keep (create the list "Shopping List" if it doesn't exist):
 
-${recipe.title} (${currentServings} Portionen):
+${recipe.title} (${currentServings} ${currentServings === 1 ? t.recipeDetail.serving : t.recipeDetail.servings}):
 ${ingredientsList}`;
     
     try {
       // Copy prompt to clipboard
       await navigator.clipboard.writeText(prompt);
-      toast.success('Prompt in Zwischenablage kopiert!', {
-        description: 'Füge ihn in Gemini ein und sende ab.',
+      toast.success(t.recipeDetail.promptCopied, {
+        description: t.recipeDetail.promptCopiedDescription,
       });
       
       // Open Gemini in new tab
       window.open('https://gemini.google.com/app', '_blank');
     } catch (err) {
       // Fallback: Show prompt in alert if clipboard fails
-      toast.error('Konnte nicht in Zwischenablage kopieren', {
-        description: 'Bitte kopiere den Text manuell.',
+      toast.error(t.recipeDetail.copyError, {
+        description: t.recipeDetail.copyErrorDescription,
       });
       console.error('Clipboard error:', err);
     }
@@ -144,16 +146,16 @@ ${ingredientsList}`;
     <div className="max-w-4xl mx-auto">
       <div className="mb-6 flex items-center justify-between">
         <Button variant="ghost" onClick={onClose}>
-          ← Zurück
+          ← {t.recipeDetail.back}
         </Button>
         <div className="flex gap-2">
           <Button variant="outline" onClick={onEdit}>
             <Pencil className="h-4 w-4 mr-2" />
-            Bearbeiten
+            {t.recipeDetail.edit}
           </Button>
           <Button variant="destructive" onClick={() => setShowDeleteDialog(true)}>
             <Trash2 className="h-4 w-4 mr-2" />
-            Löschen
+            {t.recipeDetail.delete}
           </Button>
         </div>
       </div>
@@ -162,7 +164,7 @@ ${ingredientsList}`;
       <div className="relative h-96 w-full overflow-hidden rounded-lg mb-6">
         <ImageWithFallback
           src={displayImages[currentImageIndex]}
-          alt={`${recipe.title} - Bild ${currentImageIndex + 1}`}
+          alt={`${recipe.title} - ${t.recipeDetail.image} ${currentImageIndex + 1}`}
           className="w-full h-full object-cover"
         />
         {displayImages.length > 1 && (
@@ -202,7 +204,7 @@ ${ingredientsList}`;
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
           >
             <ExternalLink className="h-4 w-4" />
-            Originalrezept anzeigen
+            {t.recipeDetail.viewOriginal}
           </a>
         </div>
       )}
@@ -213,34 +215,34 @@ ${ingredientsList}`;
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
               <Clock className="h-4 w-4" />
-              <span>Vorbereitung</span>
+              <span>{t.recipeDetail.preparation}</span>
             </div>
-            <p className="font-semibold">{recipe.prepTime} Min</p>
+            <p className="font-semibold">{recipe.prepTime} {t.recipeDetail.min}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
               <Clock className="h-4 w-4" />
-              <span>Ruhezeit</span>
+              <span>{t.recipeDetail.restTime}</span>
             </div>
-            <p className="font-semibold">{recipe.restTime} Min</p>
+            <p className="font-semibold">{recipe.restTime} {t.recipeDetail.min}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
               <Clock className="h-4 w-4" />
-              <span>Kochzeit</span>
+              <span>{t.recipeDetail.cookTime}</span>
             </div>
-            <p className="font-semibold">{recipe.cookTime} Min</p>
+            <p className="font-semibold">{recipe.cookTime} {t.recipeDetail.min}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
               <Flame className="h-4 w-4" />
-              <span>Kalorien</span>
+              <span>{t.recipeDetail.calories}</span>
             </div>
             <p className="font-semibold">{recipe.caloriesPerUnit} kcal/{recipe.weightUnit}</p>
           </CardContent>
@@ -252,7 +254,7 @@ ${ingredientsList}`;
         <CardHeader>
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3">
-              <CardTitle>Zutaten</CardTitle>
+              <CardTitle>{t.recipeDetail.ingredients}</CardTitle>
               <Button
                 variant="outline"
                 size="sm"
@@ -260,7 +262,7 @@ ${ingredientsList}`;
                 className="text-xs"
               >
                 <ShoppingCart className="h-3 w-3 mr-1" />
-                An Einkaufsliste
+                {t.recipeDetail.toShoppingList}
               </Button>
             </div>
             <div className="flex items-center gap-3">
@@ -277,7 +279,7 @@ ${ingredientsList}`;
                 <Users className="h-4 w-4 text-muted-foreground" />
                 <span className="font-semibold">{currentServings}</span>
                 <span className="text-sm text-muted-foreground">
-                  {currentServings === 1 ? 'Portion' : 'Portionen'}
+                  {currentServings === 1 ? t.recipeDetail.serving : t.recipeDetail.servings}
                 </span>
               </div>
               <Button
@@ -293,7 +295,7 @@ ${ingredientsList}`;
           </div>
           {currentServings !== recipe.servings && (
             <p className="text-xs text-muted-foreground mt-2">
-              Originalrezept für {recipe.servings} {recipe.servings === 1 ? 'Portion' : 'Portionen'}
+              {t.recipeDetail.originalRecipeFor} {recipe.servings} {recipe.servings === 1 ? t.recipeDetail.serving : t.recipeDetail.servings}
             </p>
           )}
         </CardHeader>
@@ -314,7 +316,7 @@ ${ingredientsList}`;
       {/* Zubereitung */}
       <Card>
         <CardHeader>
-          <CardTitle>Zubereitung</CardTitle>
+          <CardTitle>{t.recipeDetail.instructions}</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="whitespace-pre-line">{recipe.instructions}</p>
@@ -325,15 +327,15 @@ ${ingredientsList}`;
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Rezept löschen?</AlertDialogTitle>
+            <AlertDialogTitle>{t.recipeDetail.deleteConfirmTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              Möchten Sie das Rezept "{recipe.title}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
+              {t.recipeDetail.deleteConfirmDescription.replace('{title}', recipe.title)}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogCancel>{t.cancel}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Löschen
+              {t.delete}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

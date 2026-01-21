@@ -15,6 +15,7 @@ import {
 } from '@/app/components/ui/dialog';
 import { authApi } from '@/app/services/api';
 import { toast } from 'sonner';
+import { useTranslation } from '@/app/i18n';
 
 interface TwoFactorSetupProps {
   isEnabled: boolean;
@@ -22,6 +23,7 @@ interface TwoFactorSetupProps {
 }
 
 export function TwoFactorSetup({ isEnabled, onStatusChange }: TwoFactorSetupProps) {
+  const { t } = useTranslation();
   const [showSetupDialog, setShowSetupDialog] = useState(false);
   const [showDisableDialog, setShowDisableDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -42,7 +44,7 @@ export function TwoFactorSetup({ isEnabled, onStatusChange }: TwoFactorSetupProp
       setSecret(result.secret);
       setShowSetupDialog(true);
     } catch (err: any) {
-      toast.error(err.message || 'Fehler beim Starten des 2FA-Setups');
+      toast.error(err.message || t.twoFactor.setupError);
     } finally {
       setIsLoading(false);
     }
@@ -56,12 +58,12 @@ export function TwoFactorSetup({ isEnabled, onStatusChange }: TwoFactorSetupProp
     
     try {
       await authApi.verify2FA(verificationCode);
-      toast.success('2FA erfolgreich aktiviert!');
+      toast.success(t.twoFactor.enableSuccess);
       onStatusChange(true);
       setShowSetupDialog(false);
       resetState();
     } catch (err: any) {
-      setError(err.message || 'Ungültiger Code');
+      setError(err.message || t.login.invalidCode);
     } finally {
       setIsLoading(false);
     }
@@ -75,12 +77,12 @@ export function TwoFactorSetup({ isEnabled, onStatusChange }: TwoFactorSetupProp
     
     try {
       await authApi.disable2FA(disableCode);
-      toast.success('2FA erfolgreich deaktiviert');
+      toast.success(t.twoFactor.disableSuccess);
       onStatusChange(false);
       setShowDisableDialog(false);
       resetState();
     } catch (err: any) {
-      setError(err.message || 'Ungültiger Code');
+      setError(err.message || t.login.invalidCode);
     } finally {
       setIsLoading(false);
     }
@@ -113,11 +115,11 @@ export function TwoFactorSetup({ isEnabled, onStatusChange }: TwoFactorSetupProp
               <Shield className="h-6 w-6 text-muted-foreground" />
             )}
             <div>
-              <CardTitle className="text-lg">Zwei-Faktor-Authentifizierung (2FA)</CardTitle>
+              <CardTitle className="text-lg">{t.twoFactor.title}</CardTitle>
               <CardDescription>
                 {isEnabled 
-                  ? '2FA ist aktiviert und schützt Ihr Konto'
-                  : 'Fügen Sie eine zusätzliche Sicherheitsebene hinzu'}
+                  ? t.twoFactor.enabled
+                  : t.twoFactor.disabled}
               </CardDescription>
             </div>
           </div>
@@ -127,7 +129,7 @@ export function TwoFactorSetup({ isEnabled, onStatusChange }: TwoFactorSetupProp
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-sm text-green-600">
                 <ShieldCheck className="h-4 w-4" />
-                <span>Aktiv</span>
+                <span>{t.twoFactor.active}</span>
               </div>
               <Button 
                 variant="outline" 
@@ -135,7 +137,7 @@ export function TwoFactorSetup({ isEnabled, onStatusChange }: TwoFactorSetupProp
                 className="text-destructive hover:text-destructive"
               >
                 <ShieldOff className="h-4 w-4 mr-2" />
-                Deaktivieren
+                {t.twoFactor.disable}
               </Button>
             </div>
           ) : (
@@ -145,7 +147,7 @@ export function TwoFactorSetup({ isEnabled, onStatusChange }: TwoFactorSetupProp
               ) : (
                 <Shield className="h-4 w-4 mr-2" />
               )}
-              2FA aktivieren
+              {t.twoFactor.enable}
             </Button>
           )}
         </CardContent>
@@ -155,9 +157,9 @@ export function TwoFactorSetup({ isEnabled, onStatusChange }: TwoFactorSetupProp
       <Dialog open={showSetupDialog} onOpenChange={(open) => { setShowSetupDialog(open); if (!open) resetState(); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>2FA einrichten</DialogTitle>
+            <DialogTitle>{t.twoFactor.setupTitle}</DialogTitle>
             <DialogDescription>
-              Scannen Sie den QR-Code mit einer Authenticator-App (z.B. Google Authenticator, Authy)
+              {t.twoFactor.setupDescription}
             </DialogDescription>
           </DialogHeader>
           
@@ -171,7 +173,7 @@ export function TwoFactorSetup({ isEnabled, onStatusChange }: TwoFactorSetupProp
             {secret && (
               <div className="space-y-2">
                 <Label className="text-xs text-muted-foreground">
-                  Oder geben Sie diesen Code manuell ein:
+                  {t.twoFactor.manualCode}
                 </Label>
                 <div className="flex gap-2">
                   <Input 
@@ -187,7 +189,7 @@ export function TwoFactorSetup({ isEnabled, onStatusChange }: TwoFactorSetupProp
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="verificationCode">Bestätigungscode eingeben</Label>
+              <Label htmlFor="verificationCode">{t.twoFactor.enterCode}</Label>
               <Input
                 id="verificationCode"
                 type="text"
@@ -210,14 +212,14 @@ export function TwoFactorSetup({ isEnabled, onStatusChange }: TwoFactorSetupProp
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowSetupDialog(false)}>
-              Abbrechen
+              {t.cancel}
             </Button>
             <Button 
               onClick={verifyAndEnable} 
               disabled={isLoading || verificationCode.length !== 6}
             >
               {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Aktivieren
+              {t.twoFactor.enable}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -227,15 +229,15 @@ export function TwoFactorSetup({ isEnabled, onStatusChange }: TwoFactorSetupProp
       <Dialog open={showDisableDialog} onOpenChange={(open) => { setShowDisableDialog(open); if (!open) resetState(); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>2FA deaktivieren</DialogTitle>
+            <DialogTitle>{t.twoFactor.disableTitle}</DialogTitle>
             <DialogDescription>
-              Geben Sie Ihren aktuellen 2FA-Code ein, um die Zwei-Faktor-Authentifizierung zu deaktivieren.
+              {t.twoFactor.disableDescription}
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="disableCode">2FA-Code</Label>
+              <Label htmlFor="disableCode">{t.twoFactor.code}</Label>
               <Input
                 id="disableCode"
                 type="text"
@@ -258,7 +260,7 @@ export function TwoFactorSetup({ isEnabled, onStatusChange }: TwoFactorSetupProp
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDisableDialog(false)}>
-              Abbrechen
+              {t.cancel}
             </Button>
             <Button 
               variant="destructive"
@@ -266,7 +268,7 @@ export function TwoFactorSetup({ isEnabled, onStatusChange }: TwoFactorSetupProp
               disabled={isLoading || disableCode.length !== 6}
             >
               {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Deaktivieren
+              {t.twoFactor.disable}
             </Button>
           </DialogFooter>
         </DialogContent>

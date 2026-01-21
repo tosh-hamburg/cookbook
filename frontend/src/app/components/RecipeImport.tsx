@@ -14,19 +14,21 @@ import {
 import { importRecipeFromUrl } from '@/app/utils/recipeImport';
 import type { Recipe } from '@/app/types/recipe';
 import { toast } from 'sonner';
+import { useTranslation } from '@/app/i18n';
 
 interface RecipeImportProps {
   onImport: (recipe: Recipe) => void;
 }
 
 export function RecipeImport({ onImport }: RecipeImportProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleImport = async () => {
     if (!url.trim()) {
-      toast.error('Bitte geben Sie eine URL ein');
+      toast.error(t.recipeImport.enterUrl);
       return;
     }
 
@@ -34,11 +36,11 @@ export function RecipeImport({ onImport }: RecipeImportProps) {
     try {
       const recipe = await importRecipeFromUrl(url);
       onImport(recipe);
-      toast.success('Rezept erfolgreich importiert!');
+      toast.success(t.recipes.importSuccess);
       setOpen(false);
       setUrl('');
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Fehler beim Importieren des Rezepts';
+      const errorMessage = error instanceof Error ? error.message : t.recipes.importError;
       toast.error(errorMessage);
       console.error('Import error:', error);
     } finally {
@@ -51,25 +53,24 @@ export function RecipeImport({ onImport }: RecipeImportProps) {
       <DialogTrigger asChild>
         <Button variant="outline">
           <Download className="h-4 w-4 mr-2" />
-          Rezept importieren
+          {t.recipes.importRecipe}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Rezept importieren</DialogTitle>
+          <DialogTitle>{t.recipeImport.title}</DialogTitle>
           <DialogDescription>
-            Geben Sie die URL eines Rezepts ein (z.B. von Chefkoch.de), um es zu importieren.
-            Das Rezept wird automatisch von der Website extrahiert.
+            {t.recipeImport.description}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="url">Rezept-URL</Label>
+            <Label htmlFor="url">{t.recipeImport.urlLabel}</Label>
             <Input
               id="url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://www.chefkoch.de/rezepte/..."
+              placeholder={t.recipeImport.urlPlaceholder}
               disabled={loading}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
@@ -81,18 +82,18 @@ export function RecipeImport({ onImport }: RecipeImportProps) {
         </div>
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => setOpen(false)} disabled={loading}>
-            Abbrechen
+            {t.cancel}
           </Button>
           <Button onClick={handleImport} disabled={loading}>
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Importiere...
+                {t.recipeImport.importing}
               </>
             ) : (
               <>
                 <Download className="h-4 w-4 mr-2" />
-                Importieren
+                {t.recipeImport.importButton}
               </>
             )}
           </Button>

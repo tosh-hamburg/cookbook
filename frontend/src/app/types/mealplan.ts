@@ -34,15 +34,15 @@ export interface AggregatedIngredient {
   }>;
 }
 
-// Meal type labels in German
+// Meal type labels - now managed via i18n, these are fallback defaults
 export const MEAL_TYPE_LABELS: Record<MealType, string> = {
-  breakfast: 'Frühstück',
-  lunch: 'Mittagessen',
-  dinner: 'Abendessen',
+  breakfast: 'Breakfast',
+  lunch: 'Lunch',
+  dinner: 'Dinner',
 };
 
-// Day names in German
-export const DAY_NAMES = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
+// Day names - now managed via i18n, these are fallback defaults
+export const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 // Helper function to get the start of the next week (Monday)
 export function getNextWeekStart(): Date {
@@ -102,10 +102,22 @@ export function createEmptyWeekPlan(weekStart: Date): WeekPlan {
   };
 }
 
-// Format date for display (e.g., "Mo 15.01.")
-export function formatDateShort(date: Date): string {
-  const dayNames = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
-  const day = dayNames[date.getDay()];
+// Format date for display (e.g., "Mo 15.01.") - uses browser locale
+// dayNamesShort array starts with Monday (index 0), Sunday is index 6
+export function formatDateShort(date: Date, dayNamesShort?: string[]): string {
+  // Default: Sunday-based (matches Date.getDay())
+  const defaultNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  
+  if (dayNamesShort) {
+    // Provided array is Monday-based (Mon=0, Tue=1, ..., Sun=6)
+    // Convert Date.getDay() (Sun=0, Mon=1, ..., Sat=6) to Monday-based index
+    const jsDay = date.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+    const mondayBasedIndex = jsDay === 0 ? 6 : jsDay - 1; // Convert: Sun(0)->6, Mon(1)->0, Tue(2)->1, etc.
+    const day = dayNamesShort[mondayBasedIndex];
+    return `${day} ${date.getDate()}.${date.getMonth() + 1}.`;
+  }
+  
+  const day = defaultNames[date.getDay()];
   return `${day} ${date.getDate()}.${date.getMonth() + 1}.`;
 }
 

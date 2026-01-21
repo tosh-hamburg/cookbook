@@ -7,12 +7,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app
 import { Alert, AlertDescription } from '@/app/components/ui/alert';
 import { authApi } from '@/app/services/api';
 import { toast } from 'sonner';
+import { useTranslation } from '@/app/i18n';
 
 interface ChangePasswordProps {
   hasPassword: boolean;
 }
 
 export function ChangePassword({ hasPassword }: ChangePasswordProps) {
+  const { t } = useTranslation();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -26,12 +28,12 @@ export function ChangePassword({ hasPassword }: ChangePasswordProps) {
     setError('');
 
     if (newPassword.length < 6) {
-      setError('Das neue Passwort muss mindestens 6 Zeichen lang sein');
+      setError(t.password.minLength);
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError('Die Passwörter stimmen nicht überein');
+      setError(t.password.mismatch);
       return;
     }
 
@@ -41,12 +43,12 @@ export function ChangePassword({ hasPassword }: ChangePasswordProps) {
         hasPassword ? currentPassword : null,
         newPassword
       );
-      toast.success('Passwort erfolgreich geändert');
+      toast.success(t.password.changed);
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
-      setError(err.message || 'Fehler beim Ändern des Passworts');
+      setError(err.message || t.password.changeError);
     } finally {
       setIsLoading(false);
     }
@@ -58,11 +60,11 @@ export function ChangePassword({ hasPassword }: ChangePasswordProps) {
         <div className="flex items-center gap-3">
           <Key className="h-6 w-6 text-muted-foreground" />
           <div>
-            <CardTitle className="text-lg">Passwort ändern</CardTitle>
+            <CardTitle className="text-lg">{t.password.title}</CardTitle>
             <CardDescription>
               {hasPassword 
-                ? 'Ändern Sie Ihr bestehendes Passwort'
-                : 'Legen Sie ein Passwort fest, um sich auch ohne Google anmelden zu können'}
+                ? t.password.changeExisting
+                : t.password.setNew}
             </CardDescription>
           </div>
         </div>
@@ -71,7 +73,7 @@ export function ChangePassword({ hasPassword }: ChangePasswordProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
           {hasPassword && (
             <div className="space-y-2">
-              <Label htmlFor="currentPassword">Aktuelles Passwort</Label>
+              <Label htmlFor="currentPassword">{t.password.currentPassword}</Label>
               <div className="relative">
                 <Input
                   id="currentPassword"
@@ -96,7 +98,7 @@ export function ChangePassword({ hasPassword }: ChangePasswordProps) {
           )}
           
           <div className="space-y-2">
-            <Label htmlFor="newPassword">Neues Passwort</Label>
+            <Label htmlFor="newPassword">{t.password.newPassword}</Label>
             <div className="relative">
               <Input
                 id="newPassword"
@@ -117,11 +119,11 @@ export function ChangePassword({ hasPassword }: ChangePasswordProps) {
                 {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">Mindestens 6 Zeichen</p>
+            <p className="text-xs text-muted-foreground">{t.password.minLength}</p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Passwort bestätigen</Label>
+            <Label htmlFor="confirmPassword">{t.password.confirmPassword}</Label>
             <Input
               id="confirmPassword"
               type="password"
@@ -141,7 +143,7 @@ export function ChangePassword({ hasPassword }: ChangePasswordProps) {
 
           <Button type="submit" disabled={isLoading || !newPassword || !confirmPassword}>
             {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {hasPassword ? 'Passwort ändern' : 'Passwort festlegen'}
+            {hasPassword ? t.password.changeButton : t.password.setButton}
           </Button>
         </form>
       </CardContent>

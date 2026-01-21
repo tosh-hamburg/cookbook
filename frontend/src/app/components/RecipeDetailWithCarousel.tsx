@@ -17,6 +17,7 @@ import {
 } from '@/app/components/ui/alert-dialog';
 import { useState, useMemo, useEffect } from 'react';
 import { collectionsApi, type Collection } from '@/app/services/api';
+import { useTranslation } from '@/app/i18n';
 
 interface RecipeDetailProps {
   recipe: Recipe;
@@ -67,6 +68,7 @@ function scaleIngredientAmount(amount: string, factor: number): string {
 }
 
 export function RecipeDetailWithCarousel({ recipe, onClose, onEdit, onDelete, isAdmin, onRecipeUpdate }: RecipeDetailProps) {
+  const { t } = useTranslation();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [currentServings, setCurrentServings] = useState(recipe.servings || 4);
   const [availableCollections, setAvailableCollections] = useState<Collection[]>([]);
@@ -91,7 +93,7 @@ export function RecipeDetailWithCarousel({ recipe, onClose, onEdit, onDelete, is
     try {
       await collectionsApi.addRecipe(collectionId, recipe.id);
       const collection = availableCollections.find(c => c.id === collectionId);
-      toast.success(`Zu "${collection?.name}" hinzugefügt`);
+      toast.success(t.collections.addedToCollection);
       // Update recipe with new collection
       if (onRecipeUpdate) {
         onRecipeUpdate({
@@ -100,7 +102,7 @@ export function RecipeDetailWithCarousel({ recipe, onClose, onEdit, onDelete, is
         });
       }
     } catch (error) {
-      toast.error('Fehler beim Hinzufügen zur Sammlung');
+      toast.error(t.collections.updateError);
       console.error(error);
     } finally {
       setIsLoadingCollections(false);
@@ -112,8 +114,7 @@ export function RecipeDetailWithCarousel({ recipe, onClose, onEdit, onDelete, is
     setIsLoadingCollections(true);
     try {
       await collectionsApi.removeRecipe(collectionId, recipe.id);
-      const collection = recipe.collections?.find(c => c.id === collectionId);
-      toast.success(`Aus "${collection?.name}" entfernt`);
+      toast.success(t.collections.removedFromCollection);
       // Update recipe without this collection
       if (onRecipeUpdate) {
         onRecipeUpdate({
@@ -122,7 +123,7 @@ export function RecipeDetailWithCarousel({ recipe, onClose, onEdit, onDelete, is
         });
       }
     } catch (error) {
-      toast.error('Fehler beim Entfernen aus Sammlung');
+      toast.error(t.collections.updateError);
       console.error(error);
     } finally {
       setIsLoadingCollections(false);
@@ -181,22 +182,22 @@ export function RecipeDetailWithCarousel({ recipe, onClose, onEdit, onDelete, is
     // Create Gemini prompt
     const prompt = `Füge bitte folgende Zutaten zu meiner Einkaufsliste in Google Keep hinzu (erstelle die Liste "Einkaufsliste" falls sie nicht existiert):
 
-${recipe.title} (${currentServings} Portionen):
+${recipe.title} (${currentServings} ${currentServings === 1 ? t.recipeDetail.serving : t.recipeDetail.servings}):
 ${ingredientsList}`;
     
     try {
       // Copy prompt to clipboard
       await navigator.clipboard.writeText(prompt);
-      toast.success('Prompt in Zwischenablage kopiert!', {
-        description: 'Füge ihn in Gemini ein und sende ab.',
+      toast.success(t.recipeDetail.promptCopied, {
+        description: t.recipeDetail.promptCopiedDescription,
       });
       
       // Open Gemini in new tab
       window.open('https://gemini.google.com/app', '_blank');
     } catch (err) {
       // Fallback: Show prompt in alert if clipboard fails
-      toast.error('Konnte nicht in Zwischenablage kopieren', {
-        description: 'Bitte kopiere den Text manuell.',
+      toast.error(t.recipeDetail.copyError, {
+        description: t.recipeDetail.copyErrorDescription,
       });
       console.error('Clipboard error:', err);
     }
@@ -206,16 +207,16 @@ ${ingredientsList}`;
     <div className="max-w-4xl mx-auto">
       <div className="mb-6 flex items-center justify-between">
         <Button variant="ghost" onClick={onClose}>
-          ← Zurück
+          ← {t.recipeDetail.back}
         </Button>
         <div className="flex gap-2">
           <Button variant="outline" onClick={onEdit}>
             <Pencil className="h-4 w-4 mr-2" />
-            Bearbeiten
+            {t.recipeDetail.edit}
           </Button>
           <Button variant="destructive" onClick={() => setShowDeleteDialog(true)}>
             <Trash2 className="h-4 w-4 mr-2" />
-            Löschen
+            {t.recipeDetail.delete}
           </Button>
         </div>
       </div>

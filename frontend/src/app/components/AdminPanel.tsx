@@ -13,6 +13,7 @@ import { Label } from '@/app/components/ui/label';
 import { toast } from 'sonner';
 import { settingsApi } from '@/app/services/api';
 import type { User } from '@/app/types/user';
+import { useTranslation } from '@/app/i18n';
 
 interface AdminPanelProps {
   currentUser: User;
@@ -21,9 +22,10 @@ interface AdminPanelProps {
   onSettingsUpdate?: () => void;
 }
 
-const DEFAULT_GEMINI_PROMPT = 'Füge bitte folgende Zutaten zu meiner Einkaufsliste in Google Keep hinzu (erstelle die Liste "Einkaufsliste" falls sie nicht existiert):';
+const DEFAULT_GEMINI_PROMPT = 'Please add the following ingredients to my shopping list in Google Keep (create "Shopping List" if it does not exist):';
 
 export function AdminPanel({ currentUser, onClose, onUserUpdate, onSettingsUpdate }: AdminPanelProps) {
+  const { t } = useTranslation();
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(currentUser.twoFactorEnabled || false);
   const [geminiPrompt, setGeminiPrompt] = useState(DEFAULT_GEMINI_PROMPT);
   const [isLoadingSettings, setIsLoadingSettings] = useState(false);
@@ -55,11 +57,11 @@ export function AdminPanel({ currentUser, onClose, onUserUpdate, onSettingsUpdat
     setIsSavingSettings(true);
     try {
       await settingsApi.updateGeminiPrompt(geminiPrompt);
-      toast.success('Gemini-Prompt gespeichert');
+      toast.success(t.admin.promptSaved);
       onSettingsUpdate?.();
     } catch (error) {
       console.error('Error saving Gemini prompt:', error);
-      toast.error('Fehler beim Speichern des Prompts');
+      toast.error(t.admin.promptSaveError);
     } finally {
       setIsSavingSettings(false);
     }
@@ -78,14 +80,14 @@ export function AdminPanel({ currentUser, onClose, onUserUpdate, onSettingsUpdat
         <div className="flex items-center gap-3">
           <Settings className="h-8 w-8" />
           <div>
-            <h1>Verwaltung</h1>
+            <h1>{t.admin.title}</h1>
             <p className="text-sm text-muted-foreground">
-              {isAdmin ? 'Systemeinstellungen und Benutzerverwaltung' : 'Profileinstellungen'}
+              {isAdmin ? t.admin.systemSettings : t.admin.profileSettings}
             </p>
           </div>
         </div>
         <Button variant="outline" onClick={onClose}>
-          Zurück zu Rezepten
+          {t.admin.backToRecipes}
         </Button>
       </div>
 
@@ -93,13 +95,13 @@ export function AdminPanel({ currentUser, onClose, onUserUpdate, onSettingsUpdat
         <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-5' : 'grid-cols-1'}`}>
           {isAdmin && (
             <>
-              <TabsTrigger value="categories">Kategorien</TabsTrigger>
-              <TabsTrigger value="collections">Sammlungen</TabsTrigger>
-              <TabsTrigger value="users">Benutzer</TabsTrigger>
-              <TabsTrigger value="settings">Einstellungen</TabsTrigger>
+              <TabsTrigger value="categories">{t.admin.categories}</TabsTrigger>
+              <TabsTrigger value="collections">{t.admin.collections}</TabsTrigger>
+              <TabsTrigger value="users">{t.admin.users}</TabsTrigger>
+              <TabsTrigger value="settings">{t.admin.settings}</TabsTrigger>
             </>
           )}
-          <TabsTrigger value="security">Sicherheit</TabsTrigger>
+          <TabsTrigger value="security">{t.admin.security}</TabsTrigger>
         </TabsList>
         
         {isAdmin && (
@@ -116,9 +118,9 @@ export function AdminPanel({ currentUser, onClose, onUserUpdate, onSettingsUpdat
             <TabsContent value="settings" className="mt-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Gemini-Integration</CardTitle>
+                  <CardTitle className="text-lg">{t.admin.geminiIntegration}</CardTitle>
                   <CardDescription>
-                    Konfigurieren Sie den Einleitungstext, der beim Export von Zutaten an Gemini verwendet wird.
+                    {t.admin.geminiDescription}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -129,17 +131,17 @@ export function AdminPanel({ currentUser, onClose, onUserUpdate, onSettingsUpdat
                   ) : (
                     <>
                       <div className="space-y-2">
-                        <Label htmlFor="geminiPrompt">Einleitungstext für Gemini</Label>
+                        <Label htmlFor="geminiPrompt">{t.admin.geminiPromptLabel}</Label>
                         <Textarea
                           id="geminiPrompt"
                           value={geminiPrompt}
                           onChange={(e) => setGeminiPrompt(e.target.value)}
                           rows={4}
-                          placeholder="Füge bitte folgende Zutaten zu meiner Einkaufsliste hinzu..."
+                          placeholder={t.admin.geminiPromptPlaceholder}
                           className="font-mono text-sm"
                         />
                         <p className="text-xs text-muted-foreground">
-                          Dieser Text wird vor der Zutatenliste eingefügt, wenn Benutzer die Einkaufsliste an Gemini senden.
+                          {t.admin.geminiPromptHint}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -153,13 +155,13 @@ export function AdminPanel({ currentUser, onClose, onUserUpdate, onSettingsUpdat
                           ) : (
                             <Save className="h-4 w-4" />
                           )}
-                          Speichern
+                          {t.save}
                         </Button>
                         <Button 
                           variant="outline"
                           onClick={() => setGeminiPrompt(DEFAULT_GEMINI_PROMPT)}
                         >
-                          Standard wiederherstellen
+                          {t.admin.restoreDefault}
                         </Button>
                       </div>
                     </>
@@ -175,8 +177,8 @@ export function AdminPanel({ currentUser, onClose, onUserUpdate, onSettingsUpdat
             {/* User Info */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Profil</CardTitle>
-                <CardDescription>Ihre Kontoinformationen</CardDescription>
+                <CardTitle className="text-lg">{t.admin.profile}</CardTitle>
+                <CardDescription>{t.admin.accountInfo}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
                 <div className="flex items-center gap-3">

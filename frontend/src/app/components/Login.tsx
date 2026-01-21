@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/app/components/ui/alert';
 import { Separator } from '@/app/components/ui/separator';
 import { authApi } from '@/app/services/api';
 import type { User } from '@/app/types/user';
+import { useTranslation } from '@/app/i18n';
 
 // Google Client ID from environment
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -17,6 +18,7 @@ interface LoginProps {
 }
 
 export function Login({ onLogin }: LoginProps) {
+  const { t, language } = useTranslation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [twoFactorCode, setTwoFactorCode] = useState('');
@@ -48,7 +50,7 @@ export function Login({ onLogin }: LoginProps) {
             size: 'large', 
             width: '100%',
             text: 'signin_with',
-            locale: 'de'
+            locale: language
           }
         );
       }
@@ -74,7 +76,7 @@ export function Login({ onLogin }: LoginProps) {
       }
     } catch (err) {
       console.error('Google login error:', err);
-      setError('Fehler bei der Google-Anmeldung');
+      setError(t.login.googleError);
     } finally {
       setIsLoading(false);
     }
@@ -97,11 +99,11 @@ export function Login({ onLogin }: LoginProps) {
       } else if (result.user) {
         onLogin(result.user);
       } else {
-        setError('Ungültiger Benutzername oder Passwort');
+        setError(t.login.invalidCredentials);
       }
     } catch (err: any) {
       console.error('Login error:', err);
-      setError(err.message || 'Verbindungsfehler. Bitte versuchen Sie es später erneut.');
+      setError(err.message || t.login.connectionError);
     } finally {
       setIsLoading(false);
     }
@@ -126,11 +128,11 @@ export function Login({ onLogin }: LoginProps) {
       if (result.user) {
         onLogin(result.user);
       } else {
-        setError('Ungültiger 2FA-Code');
+        setError(t.login.invalidCode);
       }
     } catch (err: any) {
       console.error('2FA error:', err);
-      setError(err.message || 'Ungültiger 2FA-Code');
+      setError(err.message || t.login.invalidCode);
     } finally {
       setIsLoading(false);
     }
@@ -161,15 +163,15 @@ export function Login({ onLogin }: LoginProps) {
             <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-2">
               <Shield className="h-8 w-8 text-primary" />
             </div>
-            <CardTitle className="text-2xl font-bold">Zwei-Faktor-Authentifizierung</CardTitle>
+            <CardTitle className="text-2xl font-bold">{t.login.twoFactorTitle}</CardTitle>
             <CardDescription>
-              Geben Sie den Code aus Ihrer Authenticator-App ein
+              {t.login.twoFactorDescription}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handle2FASubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="twoFactorCode">6-stelliger Code</Label>
+                <Label htmlFor="twoFactorCode">{t.login.twoFactorCode}</Label>
                 <Input
                   id="twoFactorCode"
                   type="text"
@@ -197,10 +199,10 @@ export function Login({ onLogin }: LoginProps) {
                 ) : (
                   <Shield className="h-4 w-4 mr-2" />
                 )}
-                {isLoading ? 'Wird überprüft...' : 'Bestätigen'}
+                {isLoading ? t.login.verifying : t.login.verify}
               </Button>
               <Button type="button" variant="ghost" className="w-full" onClick={cancelTwoFactor}>
-                Zurück zur Anmeldung
+                {t.login.backToLogin}
               </Button>
             </form>
           </CardContent>
@@ -224,9 +226,9 @@ export function Login({ onLogin }: LoginProps) {
       <Card className="w-full max-w-md backdrop-blur-sm bg-card/95 shadow-2xl border-0">
         <CardHeader className="space-y-1 text-center">
           <div className="text-5xl mb-2">📖</div>
-          <CardTitle className="text-3xl font-bold">Cookbook</CardTitle>
+          <CardTitle className="text-3xl font-bold">{t.login.title}</CardTitle>
           <CardDescription>
-            Melden Sie sich an, um auf Cookbook zuzugreifen
+            {t.login.subtitle}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -238,7 +240,7 @@ export function Login({ onLogin }: LoginProps) {
               <div className="relative my-4">
                 <Separator />
                 <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
-                  oder
+                  {t.or}
                 </span>
               </div>
             </>
@@ -246,7 +248,7 @@ export function Login({ onLogin }: LoginProps) {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Benutzername</Label>
+              <Label htmlFor="username">{t.login.username}</Label>
               <Input
                 id="username"
                 type="text"
@@ -259,7 +261,7 @@ export function Login({ onLogin }: LoginProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Passwort</Label>
+              <Label htmlFor="password">{t.login.password}</Label>
               <Input
                 id="password"
                 type="password"
@@ -283,7 +285,7 @@ export function Login({ onLogin }: LoginProps) {
               ) : (
                 <LogIn className="h-4 w-4 mr-2" />
               )}
-              {isLoading ? 'Wird angemeldet...' : 'Anmelden'}
+              {isLoading ? t.login.loggingIn : t.login.loginButton}
             </Button>
           </form>
         </CardContent>

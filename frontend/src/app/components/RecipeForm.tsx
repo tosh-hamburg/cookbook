@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/ca
 import { Checkbox } from '@/app/components/ui/checkbox';
 import { getCategories, loadCategories } from '@/app/utils/categories';
 import { toast } from 'sonner';
+import { useTranslation } from '@/app/i18n';
 
 interface RecipeFormProps {
   recipe?: Recipe;
@@ -18,6 +19,7 @@ interface RecipeFormProps {
 }
 
 export function RecipeForm({ recipe, userId, onSave, onCancel }: RecipeFormProps) {
+  const { t } = useTranslation();
   const [title, setTitle] = useState(recipe?.title || '');
   const [images, setImages] = useState<string[]>(recipe?.images || []);
   const [ingredients, setIngredients] = useState<Ingredient[]>(
@@ -54,7 +56,7 @@ export function RecipeForm({ recipe, userId, onSave, onCancel }: RecipeFormProps
 
     Array.from(files).forEach((file) => {
       if (file.size > 5 * 1024 * 1024) {
-        toast.error(`Datei ${file.name} ist zu groß (max. 5MB)`);
+        toast.error(t.recipeForm.fileTooLarge.replace('{name}', file.name));
         return;
       }
 
@@ -64,7 +66,7 @@ export function RecipeForm({ recipe, userId, onSave, onCancel }: RecipeFormProps
         setImages((prev) => [...prev, base64]);
       };
       reader.onerror = () => {
-        toast.error(`Fehler beim Laden von ${file.name}`);
+        toast.error(t.recipeForm.fileLoadError.replace('{name}', file.name));
       };
       reader.readAsDataURL(file);
     });
@@ -131,13 +133,13 @@ export function RecipeForm({ recipe, userId, onSave, onCancel }: RecipeFormProps
   return (
     <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <h1>{recipe ? 'Rezept bearbeiten' : 'Neues Rezept'}</h1>
+        <h1>{recipe ? t.recipeForm.editRecipe : t.recipeForm.newRecipe}</h1>
         <div className="flex gap-2">
           <Button type="button" variant="outline" onClick={onCancel}>
-            Abbrechen
+            {t.cancel}
           </Button>
           <Button type="submit">
-            Speichern
+            {t.save}
           </Button>
         </div>
       </div>
@@ -145,16 +147,16 @@ export function RecipeForm({ recipe, userId, onSave, onCancel }: RecipeFormProps
       {/* Titel */}
       <Card>
         <CardHeader>
-          <CardTitle>Grundinformationen</CardTitle>
+          <CardTitle>{t.recipeForm.basicInfo}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label htmlFor="title">Titel*</Label>
+            <Label htmlFor="title">{t.recipeForm.title}*</Label>
             <Input
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="z.B. Spaghetti Carbonara"
+              placeholder={t.recipeForm.titlePlaceholder}
               required
             />
           </div>
@@ -164,7 +166,7 @@ export function RecipeForm({ recipe, userId, onSave, onCancel }: RecipeFormProps
       {/* Bilder */}
       <Card>
         <CardHeader>
-          <CardTitle>Bilder</CardTitle>
+          <CardTitle>{t.recipeForm.images}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {images.length > 0 && (
@@ -173,7 +175,7 @@ export function RecipeForm({ recipe, userId, onSave, onCancel }: RecipeFormProps
                 <div key={index} className="relative group">
                   <img
                     src={img}
-                    alt={`Bild ${index + 1}`}
+                    alt={`${t.recipeDetail.image} ${index + 1}`}
                     className="w-full h-32 object-cover rounded-lg"
                   />
                   <Button
@@ -206,7 +208,7 @@ export function RecipeForm({ recipe, userId, onSave, onCancel }: RecipeFormProps
               className="w-full"
             >
               <Upload className="h-4 w-4 mr-2" />
-              Bilder hochladen (max. 5MB pro Bild)
+              {t.recipeForm.uploadImages}
             </Button>
           </div>
         </CardContent>
@@ -215,12 +217,12 @@ export function RecipeForm({ recipe, userId, onSave, onCancel }: RecipeFormProps
       {/* Kategorien */}
       <Card>
         <CardHeader>
-          <CardTitle>Kategorien</CardTitle>
+          <CardTitle>{t.recipeForm.categories}</CardTitle>
         </CardHeader>
         <CardContent>
           {availableCategories.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Keine Kategorien verfügbar. Erstellen Sie Kategorien im Admin-Bereich.
+              {t.recipeForm.noCategories}
             </p>
           ) : (
             <div className="flex flex-wrap gap-4">
@@ -247,12 +249,12 @@ export function RecipeForm({ recipe, userId, onSave, onCancel }: RecipeFormProps
       {/* Zeitangaben */}
       <Card>
         <CardHeader>
-          <CardTitle>Zeitangaben (in Minuten)</CardTitle>
+          <CardTitle>{t.recipeForm.timeInfo}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <Label htmlFor="prepTime">Vorbereitungszeit</Label>
+              <Label htmlFor="prepTime">{t.recipeForm.prepTime}</Label>
               <Input
                 id="prepTime"
                 type="number"
@@ -262,7 +264,7 @@ export function RecipeForm({ recipe, userId, onSave, onCancel }: RecipeFormProps
               />
             </div>
             <div>
-              <Label htmlFor="restTime">Ruhezeit</Label>
+              <Label htmlFor="restTime">{t.recipeForm.restTime}</Label>
               <Input
                 id="restTime"
                 type="number"
@@ -272,7 +274,7 @@ export function RecipeForm({ recipe, userId, onSave, onCancel }: RecipeFormProps
               />
             </div>
             <div>
-              <Label htmlFor="cookTime">Kochzeit</Label>
+              <Label htmlFor="cookTime">{t.recipeForm.cookTime}</Label>
               <Input
                 id="cookTime"
                 type="number"
@@ -284,7 +286,7 @@ export function RecipeForm({ recipe, userId, onSave, onCancel }: RecipeFormProps
           </div>
           <div className="mt-4 p-4 bg-muted rounded-lg">
             <p className="text-sm font-medium">
-              Gesamtzeit: <span className="text-lg">{totalTime} Minuten</span>
+              {t.recipeForm.totalTime}: <span className="text-lg">{totalTime} {t.recipeForm.minutes}</span>
             </p>
           </div>
         </CardContent>
@@ -293,12 +295,12 @@ export function RecipeForm({ recipe, userId, onSave, onCancel }: RecipeFormProps
       {/* Kalorien */}
       <Card>
         <CardHeader>
-          <CardTitle>Nährwertangaben</CardTitle>
+          <CardTitle>{t.recipeForm.nutritionInfo}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="calories">Kalorien</Label>
+              <Label htmlFor="calories">{t.recipeForm.calories}</Label>
               <Input
                 id="calories"
                 type="number"
@@ -308,12 +310,12 @@ export function RecipeForm({ recipe, userId, onSave, onCancel }: RecipeFormProps
               />
             </div>
             <div>
-              <Label htmlFor="weightUnit">Gewichtseinheit</Label>
+              <Label htmlFor="weightUnit">{t.recipeForm.weightUnit}</Label>
               <Input
                 id="weightUnit"
                 value={weightUnit}
                 onChange={(e) => setWeightUnit(e.target.value)}
-                placeholder="z.B. 100g, Portion, Stück"
+                placeholder={t.recipeForm.weightUnitPlaceholder}
               />
             </div>
           </div>
@@ -324,10 +326,10 @@ export function RecipeForm({ recipe, userId, onSave, onCancel }: RecipeFormProps
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Zutaten</CardTitle>
+            <CardTitle>{t.recipeForm.ingredients}</CardTitle>
             <div className="flex items-center gap-2">
               <Label htmlFor="servings" className="text-sm font-normal">
-                für
+                {t.recipeForm.ingredientFor}
               </Label>
               <Input
                 id="servings"
@@ -339,7 +341,7 @@ export function RecipeForm({ recipe, userId, onSave, onCancel }: RecipeFormProps
                 className="w-16 text-center"
               />
               <span className="text-sm text-muted-foreground">
-                {parseInt(servings) === 1 ? 'Portion' : 'Portionen'}
+                {parseInt(servings) === 1 ? t.recipeDetail.serving : t.recipeDetail.servings}
               </span>
             </div>
           </div>
@@ -350,13 +352,13 @@ export function RecipeForm({ recipe, userId, onSave, onCancel }: RecipeFormProps
               <Input
                 value={ingredient.name}
                 onChange={(e) => updateIngredient(index, 'name', e.target.value)}
-                placeholder="Zutat"
+                placeholder={t.recipeForm.ingredient}
                 className="flex-1"
               />
               <Input
                 value={ingredient.amount}
                 onChange={(e) => updateIngredient(index, 'amount', e.target.value)}
-                placeholder="Menge"
+                placeholder={t.recipeForm.amount}
                 className="w-32"
               />
               <Button
@@ -372,7 +374,7 @@ export function RecipeForm({ recipe, userId, onSave, onCancel }: RecipeFormProps
           ))}
           <Button type="button" onClick={addIngredient} variant="outline" className="w-full">
             <Plus className="h-4 w-4 mr-2" />
-            Zutat hinzufügen
+            {t.recipeForm.addIngredient}
           </Button>
         </CardContent>
       </Card>
@@ -380,13 +382,13 @@ export function RecipeForm({ recipe, userId, onSave, onCancel }: RecipeFormProps
       {/* Anleitung */}
       <Card>
         <CardHeader>
-          <CardTitle>Zubereitung</CardTitle>
+          <CardTitle>{t.recipeForm.instructions}</CardTitle>
         </CardHeader>
         <CardContent>
           <Textarea
             value={instructions}
             onChange={(e) => setInstructions(e.target.value)}
-            placeholder="Beschreiben Sie die Schritte zur Zubereitung..."
+            placeholder={t.recipeForm.instructionsPlaceholder}
             rows={10}
             required
           />

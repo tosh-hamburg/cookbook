@@ -16,8 +16,10 @@ import {
 } from '@/app/components/ui/alert-dialog';
 import { loadCategories, addCategory, deleteCategory, getCategories } from '@/app/utils/categories';
 import { toast } from 'sonner';
+import { useTranslation } from '@/app/i18n';
 
 export function CategoryManager() {
+  const { t } = useTranslation();
   const [categories, setCategories] = useState<string[]>([]);
   const [newCategory, setNewCategory] = useState('');
   const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
@@ -32,22 +34,22 @@ export function CategoryManager() {
         setCategories(loadedCategories);
       } catch (error) {
         console.error('Error loading categories:', error);
-        toast.error('Fehler beim Laden der Kategorien');
+        toast.error(t.categoryManager.loadError);
       } finally {
         setIsLoading(false);
       }
     };
     fetchCategories();
-  }, []);
+  }, [t]);
 
   const handleAddCategory = async () => {
     const trimmed = newCategory.trim();
     if (!trimmed) {
-      toast.error('Bitte geben Sie einen Kategorienamen ein');
+      toast.error(t.categoryManager.createError);
       return;
     }
     if (categories.includes(trimmed)) {
-      toast.error('Diese Kategorie existiert bereits');
+      toast.error(t.categoryManager.createError);
       return;
     }
 
@@ -56,10 +58,10 @@ export function CategoryManager() {
       await addCategory(trimmed);
       setCategories(getCategories());
       setNewCategory('');
-      toast.success('Kategorie hinzugefügt');
+      toast.success(t.categoryManager.created);
     } catch (error) {
       console.error('Error adding category:', error);
-      toast.error('Fehler beim Hinzufügen der Kategorie');
+      toast.error(t.categoryManager.createError);
     } finally {
       setIsAdding(false);
     }
@@ -72,10 +74,10 @@ export function CategoryManager() {
         await deleteCategory(categoryToDelete);
         setCategories(getCategories());
         setCategoryToDelete(null);
-        toast.success('Kategorie gelöscht');
+        toast.success(t.categoryManager.deleted);
       } catch (error) {
         console.error('Error deleting category:', error);
-        toast.error('Fehler beim Löschen der Kategorie');
+        toast.error(t.categoryManager.deleteError);
       } finally {
         setIsDeleting(false);
       }
@@ -88,10 +90,10 @@ export function CategoryManager() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Tag className="h-5 w-5" />
-            <CardTitle>Kategorien verwalten</CardTitle>
+            <CardTitle>{t.categoryManager.title}</CardTitle>
           </div>
           <CardDescription>
-            Erstellen und verwalten Sie Kategorien für Ihre Rezepte
+            {t.categoryManager.description}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -99,7 +101,7 @@ export function CategoryManager() {
             <Input
               value={newCategory}
               onChange={(e) => setNewCategory(e.target.value)}
-              placeholder="Neue Kategorie"
+              placeholder={t.categoryManager.placeholder}
               disabled={isAdding}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
@@ -114,19 +116,19 @@ export function CategoryManager() {
               ) : (
                 <Plus className="h-4 w-4 mr-2" />
               )}
-              Hinzufügen
+              {t.categoryManager.add}
             </Button>
           </div>
 
           <div className="space-y-2">
-            <p className="text-sm font-medium">Vorhandene Kategorien:</p>
+            <p className="text-sm font-medium">{t.categoryManager.title}:</p>
             {isLoading ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Wird geladen...
+                {t.loading}
               </div>
             ) : categories.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Noch keine Kategorien vorhanden</p>
+              <p className="text-sm text-muted-foreground">{t.categoryManager.noCategories}</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {categories.map((category) => (
@@ -135,7 +137,7 @@ export function CategoryManager() {
                     <button
                       onClick={() => setCategoryToDelete(category)}
                       className="ml-2 hover:text-destructive"
-                      aria-label={`${category} löschen`}
+                      aria-label={`${t.delete} ${category}`}
                     >
                       <Trash2 className="h-3 w-3" />
                     </button>
@@ -150,22 +152,22 @@ export function CategoryManager() {
       <AlertDialog open={!!categoryToDelete} onOpenChange={(open) => !open && setCategoryToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Kategorie löschen?</AlertDialogTitle>
+            <AlertDialogTitle>{t.categoryManager.confirmDelete}</AlertDialogTitle>
             <AlertDialogDescription>
-              Möchten Sie die Kategorie "{categoryToDelete}" wirklich löschen? Diese Kategorie wird aus allen Rezepten entfernt.
+              {t.categoryManager.confirmDeleteDescription.replace('{name}', categoryToDelete || '')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Abbrechen</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>{t.cancel}</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleDeleteCategory} 
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={isDeleting}
             >
               {isDeleting ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Wird gelöscht...</>
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t.loading}</>
               ) : (
-                'Löschen'
+                t.delete
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

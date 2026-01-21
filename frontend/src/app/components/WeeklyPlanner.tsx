@@ -27,8 +27,6 @@ import {
   getCurrentWeekStart,
   formatDateShort,
   formatWeekRange,
-  MEAL_TYPE_LABELS,
-  DAY_NAMES,
 } from '@/app/types/mealplan';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
@@ -41,6 +39,7 @@ import {
   TooltipTrigger,
 } from '@/app/components/ui/tooltip';
 import { mealPlansApi, type MealPlanData } from '@/app/services/api';
+import { useTranslation } from '@/app/i18n';
 
 interface WeeklyPlannerProps {
   recipes: Recipe[];
@@ -241,9 +240,17 @@ export function WeeklyPlanner({
   sentIngredients,
   onSentIngredientsChange,
 }: WeeklyPlannerProps) {
+  const { t } = useTranslation();
   const [weekPlan, setWeekPlan] = useState<WeekPlan>(() => createEmptyWeekPlan(currentWeekStart));
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Localized meal type labels
+  const mealTypeLabels: Record<MealType, string> = {
+    breakfast: t.planner.breakfast,
+    lunch: t.planner.lunch,
+    dinner: t.planner.dinner,
+  };
   
   // Recipe selection dialog state
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -287,11 +294,11 @@ export function WeeklyPlanner({
       await mealPlansApi.updateSlot(currentWeekStart, dayIndex, mealType, recipeId, servings);
     } catch (error) {
       console.error('Error saving meal slot:', error);
-      toast.error('Fehler beim Speichern');
+      toast.error(t.planner.saveError);
     } finally {
       setIsSaving(false);
     }
-  }, [currentWeekStart]);
+  }, [currentWeekStart, t]);
   
   // Navigate to previous week
   const goToPreviousWeek = useCallback(() => {
@@ -466,7 +473,7 @@ export function WeeklyPlanner({
         newSet.add(normalizedName);
       }
       onExcludedIngredientsChange(newSet);
-      toast.error('Fehler beim Aktualisieren der Zutatenliste');
+      toast.error(t.planner.ingredientListError);
     }
   };
   
@@ -486,10 +493,10 @@ export function WeeklyPlanner({
     const ingredientsToSend = onlyNew ? newIngredients : aggregatedIngredients;
     
     if (ingredientsToSend.length === 0) {
-      toast.error('Keine Zutaten vorhanden', {
+      toast.error(t.planner.noIngredients, {
         description: onlyNew 
-          ? 'Alle Zutaten wurden bereits gesendet.' 
-          : 'Fügen Sie zuerst Rezepte zum Wochenplan hinzu.',
+          ? t.planner.allSent 
+          : t.planner.addRecipesFirst,
       });
       return;
     }
@@ -517,12 +524,12 @@ ${ingredientsList}`;
         console.error('Error marking ingredients as sent:', error);
       }
       
-      toast.success('Prompt in Zwischenablage kopiert!', {
-        description: `${ingredientsToSend.length} Zutaten werden an Gemini gesendet.`,
+      toast.success(t.planner.ingredientsCopied, {
+        description: `${ingredientsToSend.length} ${t.planner.ingredientsSentTo}`,
       });
       window.open('https://gemini.google.com/app', '_blank');
     } catch (err) {
-      toast.error('Konnte nicht in Zwischenablage kopieren');
+      toast.error(t.recipeDetail.copyError);
       console.error('Clipboard error:', err);
     }
   };
@@ -532,10 +539,10 @@ ${ingredientsList}`;
     try {
       await mealPlansApi.resetSentIngredients(currentWeekStart);
       onSentIngredientsChange(new Set());
-      toast.success('Gesendete Zutaten zurückgesetzt');
+      toast.success(t.planner.sentReset);
     } catch (error) {
       console.error('Error resetting sent ingredients:', error);
-      toast.error('Fehler beim Zurücksetzen');
+      toast.error(t.planner.saveError);
     }
   };
   
@@ -544,10 +551,10 @@ ${ingredientsList}`;
     try {
       await mealPlansApi.resetExcludedIngredients(currentWeekStart);
       onExcludedIngredientsChange(new Set());
-      toast.success('Ausgeschlossene Zutaten wiederhergestellt');
+      toast.success(t.planner.excludedReset);
     } catch (error) {
       console.error('Error resetting excluded ingredients:', error);
-      toast.error('Fehler beim Zurücksetzen');
+      toast.error(t.planner.saveError);
     }
   };
   
@@ -558,16 +565,16 @@ ${ingredientsList}`;
         <div className="flex items-center gap-4">
           <Button variant="ghost" onClick={onClose}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Zurück
+            {t.planner.back}
           </Button>
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <Calendar className="h-6 w-6" />
-              Wochenplaner
+              {t.planner.title}
               {isSaving && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
             </h1>
             <p className="text-muted-foreground">
-              Planen Sie Ihre Mahlzeiten für die Woche
+              {t.planner.description}
             </p>
           </div>
         </div>
@@ -578,13 +585,13 @@ ${ingredientsList}`;
             {newIngredients.length > 0 && (
               <Button onClick={() => sendToGemini(true)} className="gap-2">
                 <Send className="h-4 w-4" />
-                Neue Zutaten senden ({newIngredients.length})
+                {t.planner.sendNewIngredients} ({newIngredients.length})
               </Button>
             )}
             {newIngredients.length === 0 && aggregatedIngredients.length > 0 && (
               <Button onClick={() => sendToGemini(false)} variant="outline" className="gap-2">
                 <ShoppingCart className="h-4 w-4" />
-                Alle erneut senden ({aggregatedIngredients.length})
+                {t.planner.sendAll} ({aggregatedIngredients.length})
               </Button>
             )}
           </div>
@@ -601,7 +608,7 @@ ${ingredientsList}`;
                 {formatWeekRange(weekPlan.weekStart, weekPlan.weekEnd)}
               </div>
               <div className="text-sm text-muted-foreground">
-                KW {getWeekNumber(weekPlan.weekStart)}
+                {t.planner.calendarWeek} {getWeekNumber(weekPlan.weekStart)}
               </div>
             </div>
             
@@ -616,7 +623,7 @@ ${ingredientsList}`;
                 onClick={goToCurrentWeek} 
                 disabled={isLoading || isCurrentWeek}
               >
-                Diese Woche
+                {t.planner.thisWeek}
               </Button>
               <Button 
                 variant={isNextUpcomingWeek ? "default" : "outline"} 
@@ -624,7 +631,7 @@ ${ingredientsList}`;
                 onClick={goToNextUpcomingWeek} 
                 disabled={isLoading || isNextUpcomingWeek}
               >
-                Kommende Woche
+                {t.planner.nextWeek}
               </Button>
               <Button variant="outline" size="icon" onClick={goToNextWeek} disabled={isLoading}>
                 <ChevronRight className="h-4 w-4" />
@@ -639,7 +646,7 @@ ${ingredientsList}`;
         <Card>
           <CardContent className="py-12 text-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-            <p className="text-muted-foreground">Wochenplan wird geladen...</p>
+            <p className="text-muted-foreground">{t.planner.planLoading}</p>
           </CardContent>
         </Card>
       ) : (
@@ -650,9 +657,9 @@ ${ingredientsList}`;
               <Card key={dayIndex} className="overflow-hidden">
                 <CardHeader className="py-3 px-4 bg-muted/50">
                   <CardTitle className="text-sm font-medium">
-                    <div>{DAY_NAMES[dayIndex]}</div>
+                    <div>{t.planner.dayNames[dayIndex]}</div>
                     <div className="text-xs text-muted-foreground font-normal">
-                      {formatDateShort(day.date)}
+                      {formatDateShort(day.date, t.planner.dayNamesShort)}
                     </div>
                   </CardTitle>
                 </CardHeader>
@@ -670,7 +677,7 @@ ${ingredientsList}`;
                         {/* Meal Type Header */}
                         <div className="flex items-center gap-1 mb-2 text-xs text-muted-foreground">
                           {getMealIcon(mealType)}
-                          <span>{MEAL_TYPE_LABELS[mealType]}</span>
+                          <span>{mealTypeLabels[mealType]}</span>
                         </div>
                         
                         {meal.recipe ? (
@@ -760,7 +767,7 @@ ${ingredientsList}`;
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <CardTitle className="flex items-center gap-2">
                     <ShoppingCart className="h-5 w-5" />
-                    Zusammengefasste Zutaten
+                    {t.planner.aggregatedIngredients}
                   </CardTitle>
                   <div className="flex items-center gap-2 flex-wrap">
                     {excludedIngredients.size > 0 && (
@@ -771,7 +778,7 @@ ${ingredientsList}`;
                         className="gap-1"
                       >
                         <RotateCcw className="h-3 w-3" />
-                        Gelöschte wiederherstellen ({excludedIngredients.size})
+                        {t.planner.restoreDeleted} ({excludedIngredients.size})
                       </Button>
                     )}
                     {sentIngredients.size > 0 && (
@@ -782,11 +789,11 @@ ${ingredientsList}`;
                         className="gap-1"
                       >
                         <RotateCcw className="h-3 w-3" />
-                        Gesendet zurücksetzen ({alreadySentIngredients.length})
+                        {t.planner.resetSent} ({alreadySentIngredients.length})
                       </Button>
                     )}
                     <Badge variant="secondary">
-                      {newIngredients.length} neu / {alreadySentIngredients.length} gesendet
+                      {newIngredients.length} {t.planner.newIngredients.toLowerCase()} / {alreadySentIngredients.length} {t.planner.alreadySent.toLowerCase()}
                     </Badge>
                   </div>
                 </div>
@@ -797,7 +804,7 @@ ${ingredientsList}`;
                   <div className="mb-4">
                     <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
                       <Send className="h-4 w-4" />
-                      Neue Zutaten ({newIngredients.length})
+                      {t.planner.newIngredients} ({newIngredients.length})
                     </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                       {newIngredients.map((ing, index) => (
@@ -824,7 +831,7 @@ ${ingredientsList}`;
                             </TooltipTrigger>
                             <TooltipContent side="top" className="max-w-xs">
                               <div className="text-xs">
-                                <p className="font-medium mb-1">Verwendet in:</p>
+                                <p className="font-medium mb-1">{t.planner.usedIn}</p>
                                 {ing.sources.map((src, i) => (
                                   <p key={i}>
                                     • {src.recipeTitle} ({src.servings}P): {src.originalAmount}
@@ -844,7 +851,7 @@ ${ingredientsList}`;
                   <div className={newIngredients.length > 0 ? 'pt-4 border-t' : ''}>
                     <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
                       <Check className="h-4 w-4 text-green-500" />
-                      Bereits gesendet ({alreadySentIngredients.length})
+                      {t.planner.alreadySent} ({alreadySentIngredients.length})
                     </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                       {alreadySentIngredients.map((ing, index) => (
@@ -872,8 +879,8 @@ ${ingredientsList}`;
                             </TooltipTrigger>
                             <TooltipContent side="top" className="max-w-xs">
                               <div className="text-xs">
-                                <p className="font-medium mb-1 text-green-600">✓ Bereits an Gemini gesendet</p>
-                                <p className="font-medium mb-1 mt-2">Verwendet in:</p>
+                                <p className="font-medium mb-1 text-green-600">✓ {t.planner.alreadySentGemini}</p>
+                                <p className="font-medium mb-1 mt-2">{t.planner.usedIn}</p>
                                 {ing.sources.map((src, i) => (
                                   <p key={i}>
                                     • {src.recipeTitle} ({src.servings}P): {src.originalAmount}
@@ -892,12 +899,12 @@ ${ingredientsList}`;
                   {newIngredients.length > 0 && (
                     <Button onClick={() => sendToGemini(true)} className="gap-2">
                       <Send className="h-4 w-4" />
-                      Neue Zutaten senden ({newIngredients.length})
+                      {t.planner.sendNewIngredients} ({newIngredients.length})
                     </Button>
                   )}
                   <Button onClick={() => sendToGemini(false)} variant="outline" className="gap-2">
                     <ShoppingCart className="h-4 w-4" />
-                    Alle senden ({aggregatedIngredients.length})
+                    {t.planner.sendAll} ({aggregatedIngredients.length})
                   </Button>
                 </div>
               </CardContent>
@@ -909,9 +916,9 @@ ${ingredientsList}`;
             <Card>
               <CardContent className="py-12 text-center">
                 <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-lg font-medium mb-2">Noch keine Mahlzeiten geplant</h3>
+                <h3 className="text-lg font-medium mb-2">{t.planner.noMeals}</h3>
                 <p className="text-muted-foreground mb-4">
-                  Klicken Sie auf einen Tag und fügen Sie Rezepte zu Ihrem Wochenplan hinzu.
+                  {t.planner.noMealsDescription}
                 </p>
               </CardContent>
             </Card>
@@ -925,11 +932,11 @@ ${ingredientsList}`;
         onOpenChange={setIsSearchOpen}
         recipes={recipes}
         onSelect={handleRecipeSelect}
-        title="Rezept für Mahlzeit auswählen"
+        title={t.planner.selectRecipe}
         description={
           selectedDayIndex !== null && selectedMealType !== null
-            ? `${DAY_NAMES[selectedDayIndex]} - ${MEAL_TYPE_LABELS[selectedMealType]}`
-            : 'Wählen Sie ein Rezept aus'
+            ? `${t.planner.dayNames[selectedDayIndex]} - ${mealTypeLabels[selectedMealType]}`
+            : t.planner.selectRecipe
         }
       />
     </div>

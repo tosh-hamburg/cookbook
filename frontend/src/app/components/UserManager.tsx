@@ -33,12 +33,14 @@ import { Badge } from '@/app/components/ui/badge';
 import { getUsers, saveUser, deleteUser } from '@/app/utils/auth';
 import type { User, UserRole } from '@/app/types/user';
 import { toast } from 'sonner';
+import { useTranslation } from '@/app/i18n';
 
 interface UserManagerProps {
   currentUser: User;
 }
 
 export function UserManager({ currentUser }: UserManagerProps) {
+  const { t } = useTranslation();
   const [users, setUsers] = useState<User[]>([]);
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -55,30 +57,25 @@ export function UserManager({ currentUser }: UserManagerProps) {
         setUsers(loadedUsers);
       } catch (error) {
         console.error('Error loading users:', error);
-        toast.error('Fehler beim Laden der Benutzer');
+        toast.error(t.userManager.loadError);
       } finally {
         setIsLoading(false);
       }
     };
     fetchUsers();
-  }, []);
+  }, [t]);
 
   const handleCreateUser = async () => {
     const trimmedUsername = newUsername.trim();
     const trimmedPassword = newPassword.trim();
 
-    if (!trimmedUsername) {
-      toast.error('Bitte geben Sie einen Benutzernamen ein');
-      return;
-    }
-    
-    if (!trimmedPassword) {
-      toast.error('Bitte geben Sie ein Passwort ein');
+    if (!trimmedUsername || !trimmedPassword) {
+      toast.error(t.userManager.validationError);
       return;
     }
 
     if (users.some(u => u.username === trimmedUsername)) {
-      toast.error('Benutzername bereits vergeben');
+      toast.error(t.userManager.validationError);
       return;
     }
 
@@ -94,10 +91,10 @@ export function UserManager({ currentUser }: UserManagerProps) {
       setNewUsername('');
       setNewPassword('');
       setNewRole('user');
-      toast.success('Benutzer erfolgreich erstellt');
+      toast.success(t.userManager.created);
     } catch (error) {
       console.error('Error creating user:', error);
-      toast.error('Fehler beim Erstellen des Benutzers');
+      toast.error(t.userManager.createError);
     } finally {
       setIsCreating(false);
     }
@@ -106,7 +103,7 @@ export function UserManager({ currentUser }: UserManagerProps) {
   const handleDeleteUser = async () => {
     if (userToDelete) {
       if (userToDelete.id === currentUser.id) {
-        toast.error('Sie können sich nicht selbst löschen');
+        toast.error(t.userManager.validationError);
         setUserToDelete(null);
         return;
       }
@@ -117,10 +114,10 @@ export function UserManager({ currentUser }: UserManagerProps) {
         const loadedUsers = await getUsers();
         setUsers(loadedUsers);
         setUserToDelete(null);
-        toast.success('Benutzer gelöscht');
+        toast.success(t.userManager.deleted);
       } catch (error) {
         console.error('Error deleting user:', error);
-        toast.error('Fehler beim Löschen des Benutzers');
+        toast.error(t.userManager.deleteError);
       } finally {
         setIsDeleting(false);
       }
@@ -133,29 +130,29 @@ export function UserManager({ currentUser }: UserManagerProps) {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            <CardTitle>Benutzerverwaltung</CardTitle>
+            <CardTitle>{t.userManager.title}</CardTitle>
           </div>
           <CardDescription>
-            Benutzer erstellen und verwalten
+            {t.userManager.description}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-4 p-4 border rounded-lg">
-            <h3 className="font-medium">Neuen Benutzer erstellen</h3>
+            <h3 className="font-medium">{t.userManager.createUser}</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="new-username">Benutzername</Label>
+                <Label htmlFor="new-username">{t.userManager.username}</Label>
                 <Input
                   id="new-username"
                   value={newUsername}
                   onChange={(e) => setNewUsername(e.target.value)}
-                  placeholder="benutzername"
+                  placeholder="username"
                   disabled={isCreating}
                   autoComplete="off"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="new-password">Passwort</Label>
+                <Label htmlFor="new-password">{t.userManager.password}</Label>
                 <Input
                   id="new-password"
                   type="password"
@@ -167,14 +164,14 @@ export function UserManager({ currentUser }: UserManagerProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="new-role">Rolle</Label>
+                <Label htmlFor="new-role">{t.userManager.role}</Label>
                 <Select value={newRole} onValueChange={(value) => setNewRole(value as UserRole)} disabled={isCreating}>
                   <SelectTrigger id="new-role">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="user">Benutzer</SelectItem>
-                    <SelectItem value="admin">Administrator</SelectItem>
+                    <SelectItem value="user">{t.userManager.user}</SelectItem>
+                    <SelectItem value="admin">{t.userManager.admin}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -185,12 +182,12 @@ export function UserManager({ currentUser }: UserManagerProps) {
               ) : (
                 <UserPlus className="h-4 w-4 mr-2" />
               )}
-              {isCreating ? 'Wird erstellt...' : 'Benutzer erstellen'}
+              {isCreating ? t.loading : t.userManager.createUser}
             </Button>
           </div>
 
           <div className="space-y-2">
-            <h3 className="font-medium">Vorhandene Benutzer</h3>
+            <h3 className="font-medium">{t.userManager.title}</h3>
             <div className="border rounded-lg">
               {isLoading ? (
                 <div className="flex items-center justify-center py-8">
@@ -200,10 +197,10 @@ export function UserManager({ currentUser }: UserManagerProps) {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Benutzername</TableHead>
-                      <TableHead>Rolle</TableHead>
-                      <TableHead>Erstellt am</TableHead>
-                      <TableHead className="w-[100px]">Aktionen</TableHead>
+                      <TableHead>{t.userManager.username}</TableHead>
+                      <TableHead>{t.userManager.role}</TableHead>
+                      <TableHead></TableHead>
+                      <TableHead className="w-[100px]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -212,20 +209,20 @@ export function UserManager({ currentUser }: UserManagerProps) {
                         <TableCell className="font-medium">
                           {user.username}
                           {user.id === currentUser.id && (
-                            <Badge variant="outline" className="ml-2">Sie</Badge>
+                            <Badge variant="outline" className="ml-2">{t.userManager.you}</Badge>
                           )}
                         </TableCell>
                         <TableCell>
                           <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
                             {user.role === 'admin' ? (
-                              <><Shield className="h-3 w-3 mr-1" />Administrator</>
+                              <><Shield className="h-3 w-3 mr-1" />{t.userManager.admin}</>
                             ) : (
-                              <><UserIcon className="h-3 w-3 mr-1" />Benutzer</>
+                              <><UserIcon className="h-3 w-3 mr-1" />{t.userManager.user}</>
                             )}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {new Date(user.createdAt).toLocaleDateString('de-DE')}
+                          {new Date(user.createdAt).toLocaleDateString()}
                         </TableCell>
                         <TableCell>
                           <Button
@@ -250,22 +247,22 @@ export function UserManager({ currentUser }: UserManagerProps) {
       <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Benutzer löschen?</AlertDialogTitle>
+            <AlertDialogTitle>{t.userManager.confirmDelete}</AlertDialogTitle>
             <AlertDialogDescription>
-              Möchten Sie den Benutzer "{userToDelete?.username}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
+              {t.userManager.confirmDeleteDescription.replace('{name}', userToDelete?.username || '')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Abbrechen</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>{t.cancel}</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleDeleteUser} 
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={isDeleting}
             >
               {isDeleting ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Wird gelöscht...</>
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t.loading}</>
               ) : (
-                'Löschen'
+                t.delete
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -21,10 +21,12 @@ import {
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
 import { settingsApi } from '@/app/services/api';
+import { useTranslation } from '@/app/i18n';
 
 type View = 'list' | 'detail' | 'create' | 'edit' | 'admin' | 'planner';
 
 export default function App() {
+  const { t } = useTranslation();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [currentView, setCurrentView] = useState<View>('list');
@@ -91,7 +93,7 @@ export default function App() {
       }
     } catch (error) {
       console.error('Error loading recipes:', error);
-      toast.error('Fehler beim Laden der Rezepte');
+      toast.error(t.recipes.loadError);
     } finally {
       setIsLoading(false);
     }
@@ -112,7 +114,7 @@ export default function App() {
     setCurrentUser(null);
     setRecipes([]);
     setCurrentView('list');
-    toast.success('Erfolgreich abgemeldet');
+    toast.success(t.app.loggedOutSuccess);
   };
 
   const handleSelectRecipe = (recipe: Recipe, fromView?: View) => {
@@ -134,11 +136,11 @@ export default function App() {
     try {
       if (currentView === 'create') {
         const newRecipe = await addRecipe(recipe);
-        toast.success('Rezept erfolgreich erstellt!');
+        toast.success(t.recipes.recipeCreated);
         setSelectedRecipe(newRecipe);
       } else {
         const updatedRecipe = await updateRecipe(recipe);
-        toast.success('Rezept erfolgreich aktualisiert!');
+        toast.success(t.recipes.recipeUpdated);
         setSelectedRecipe(updatedRecipe);
       }
       // Rezepte neu laden
@@ -147,7 +149,7 @@ export default function App() {
       setCurrentView('detail');
     } catch (error) {
       console.error('Error saving recipe:', error);
-      toast.error('Fehler beim Speichern des Rezepts');
+      toast.error(t.recipes.saveError);
     }
   };
 
@@ -155,14 +157,14 @@ export default function App() {
     if (selectedRecipe) {
       try {
         await deleteRecipe(selectedRecipe.id);
-        toast.success('Rezept erfolgreich gelöscht!');
+        toast.success(t.recipes.recipeDeleted);
         const loadedRecipes = await loadRecipes();
         setRecipes(loadedRecipes);
         setSelectedRecipe(null);
         setCurrentView('list');
       } catch (error) {
         console.error('Error deleting recipe:', error);
-        toast.error('Fehler beim Löschen des Rezepts');
+        toast.error(t.recipes.deleteError);
       }
     }
   };
@@ -174,10 +176,10 @@ export default function App() {
       setRecipes(loadedRecipes);
       setSelectedRecipe(newRecipe);
       setCurrentView('detail');
-      toast.success('Rezept erfolgreich importiert!');
+      toast.success(t.recipes.importSuccess);
     } catch (error) {
       console.error('Error importing recipe:', error);
-      toast.error('Fehler beim Importieren des Rezepts');
+      toast.error(t.recipes.importError);
     }
   };
 
@@ -224,7 +226,7 @@ export default function App() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Wird geladen...</p>
+          <p className="text-muted-foreground">{t.loading}</p>
         </div>
       </div>
     );
@@ -255,13 +257,13 @@ export default function App() {
           <div 
             className="flex items-center gap-3 sm:gap-4 cursor-pointer hover:opacity-80 transition-opacity"
             onClick={handleGoToRecipes}
-            title="Zu Meine Rezepte"
+            title={t.recipes.myRecipes}
           >
             <div className="text-3xl sm:text-4xl">📖</div>
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-white tracking-wide">Cookbook</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-white tracking-wide">{t.app.name}</h1>
               <p className="text-xs sm:text-sm text-white/80 hidden sm:block">
-                Angemeldet als: {currentUser.username} ({currentUser.role === 'admin' ? 'Administrator' : 'Benutzer'})
+                {t.app.loggedInAs}: {currentUser.username} ({currentUser.role === 'admin' ? t.app.admin : t.app.user})
               </p>
             </div>
           </div>
@@ -275,14 +277,14 @@ export default function App() {
                 className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white"
               >
                 <CalendarDays className="h-4 w-4 mr-2" />
-                Wochenplaner
+                {t.app.weeklyPlanner}
               </Button>
             )}
             <Button 
               variant="outline" 
               onClick={() => window.open('/api/app/download', '_blank')}
               className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white"
-              title="Android App herunterladen"
+              title={t.app.downloadApp}
             >
               <Smartphone className="h-4 w-4 mr-2" />
               App
@@ -294,7 +296,7 @@ export default function App() {
                 className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white"
               >
                 <Settings className="h-4 w-4 mr-2" />
-                Verwaltung
+                {t.app.administration}
               </Button>
             )}
             <Button 
@@ -303,7 +305,7 @@ export default function App() {
               className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white"
             >
               <LogOut className="h-4 w-4 mr-2" />
-              Abmelden
+              {t.app.logout}
             </Button>
           </div>
           
@@ -323,22 +325,22 @@ export default function App() {
                 {currentView !== 'planner' && (
                   <DropdownMenuItem onClick={handleOpenPlanner}>
                     <CalendarDays className="h-4 w-4 mr-2" />
-                    Wochenplaner
+                    {t.app.weeklyPlanner}
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem onClick={() => window.open('/api/app/download', '_blank')}>
                   <Smartphone className="h-4 w-4 mr-2" />
-                  App herunterladen
+                  {t.app.downloadApp}
                 </DropdownMenuItem>
                 {isAdmin && currentView !== 'admin' && (
                   <DropdownMenuItem onClick={handleOpenAdmin}>
                     <Settings className="h-4 w-4 mr-2" />
-                    Verwaltung
+                    {t.app.administration}
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="h-4 w-4 mr-2" />
-                  Abmelden
+                  {t.app.logout}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

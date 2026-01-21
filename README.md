@@ -1,8 +1,8 @@
 # 📖 Cookbook
 
-**Werbefreie Kochrezeptverwaltung für dein eigenes Netzwerk**
+**Ad-free recipe management for your own network**
 
-Cookbook ist eine selbst-gehostete Webanwendung zur Verwaltung von Kochrezepten. Importiere Rezepte von beliebten Rezeptseiten, organisiere sie in Sammlungen und greife von überall darauf zu – komplett werbefrei.
+Cookbook is a self-hosted web application for managing cooking recipes. Import recipes from popular recipe sites, organize them in collections, and access them from anywhere – completely ad-free.
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-20232A?style=flat&logo=react&logoColor=61DAFB)
@@ -12,70 +12,70 @@ Cookbook ist eine selbst-gehostete Webanwendung zur Verwaltung von Kochrezepten.
 
 ## ✨ Features
 
-- 🍳 **Rezepte verwalten** – Erstelle, bearbeite und lösche Rezepte mit Bildern, Zutaten und Zubereitungsschritten
-- 📥 **Rezept-Import** – Importiere Rezepte direkt von Chefkoch.de, Kochbar.de und anderen Seiten
-- 📁 **Sammlungen** – Organisiere Rezepte in eigenen Sammlungen (z.B. "Sommerrezepte", "Schnelle Gerichte")
-- 🏷️ **Kategorien** – Filtere Rezepte nach Kategorien
-- 👥 **Portionsrechner** – Passe Zutatenmengen automatisch an die gewünschte Portionszahl an
-- 📅 **Wochenplaner** – Plane Mahlzeiten für die Woche (Frühstück, Mittag, Abend) mit automatischer Zutaten-Aggregation
-- 🛒 **Einkaufsliste** – Exportiere Zutaten für Google Keep via Gemini (für einzelne Rezepte oder den gesamten Wochenplan)
-- 🔐 **Benutzerverwaltung** – Multi-User-Support mit Admin- und Benutzer-Rollen
-- 🔑 **Google SSO** – Anmeldung mit Google-Account
-- 🛡️ **2FA** – Optionale Zwei-Faktor-Authentifizierung
-- 📱 **Responsive Design** – Optimiert für Desktop, Tablet und Smartphone
-- 📲 **Android App** – Native Android-App als mobiles Frontend (siehe [Android App](#-android-app))
+- 🍳 **Manage Recipes** – Create, edit, and delete recipes with images, ingredients, and preparation steps
+- 📥 **Recipe Import** – Import recipes directly from Chefkoch.de, Kochbar.de, and other sites
+- 📁 **Collections** – Organize recipes in custom collections (e.g., "Summer Recipes", "Quick Dishes")
+- 🏷️ **Categories** – Filter recipes by categories
+- 👥 **Serving Calculator** – Automatically adjust ingredient amounts to the desired number of servings
+- 📅 **Weekly Planner** – Plan meals for the week (breakfast, lunch, dinner) with automatic ingredient aggregation
+- 🛒 **Shopping List** – Export ingredients to Google Keep via Gemini (for individual recipes or the entire weekly plan)
+- 🔐 **User Management** – Multi-user support with admin and user roles
+- 🔑 **Google SSO** – Sign in with Google account
+- 🛡️ **2FA** – Optional two-factor authentication
+- 📱 **Responsive Design** – Optimized for desktop, tablet, and smartphone
+- 📲 **Android App** – Native Android app as mobile frontend (see [Android App](#-android-app))
 
 ## 🖼️ Screenshots
 
 <details>
-<summary>Screenshots anzeigen</summary>
+<summary>Show screenshots</summary>
 
-*Screenshots hier einfügen*
+*Insert screenshots here*
 
 </details>
 
 ## 🚀 Installation
 
-### Voraussetzungen
+### Prerequisites
 
 - Docker & Docker Compose
-- (Optional) Reverse Proxy für HTTPS (z.B. Nginx, Traefik, Synology Reverse Proxy)
+- (Optional) Reverse proxy for HTTPS (e.g., Nginx, Traefik, Synology Reverse Proxy)
 
 ### Quick Start
 
-1. **Repository klonen**
+1. **Clone repository**
    ```bash
-   git clone https://github.com/dein-username/cookbook.git
+   git clone https://github.com/your-username/cookbook.git
    cd cookbook
    ```
 
-2. **Umgebungsvariablen konfigurieren**
+2. **Configure environment variables**
    ```bash
    cp .env.example .env
-   # .env bearbeiten und Werte anpassen
+   # Edit .env and adjust values
    ```
 
-3. **Container starten**
+3. **Start containers**
    ```bash
    docker-compose up -d
    ```
 
-4. **Anwendung öffnen**
+4. **Open application**
    - Frontend: http://localhost:3002
-   - Standard-Login: `admin` / `admin123`
+   - Default login: `admin` / `admin123`
 
-### Konfiguration
+### Configuration
 
-Erstelle eine `.env` Datei im Projektverzeichnis:
+Create a `.env` file in the project directory:
 
 ```env
-# Datenbank
+# Database
 POSTGRES_DB=cookbook
 POSTGRES_USER=cookbook
-POSTGRES_PASSWORD=sicheres_passwort_hier
+POSTGRES_PASSWORD=secure_password_here
 
 # Backend
-JWT_SECRET=zufaelliger_geheimer_schluessel
+JWT_SECRET=random_secret_key
 NODE_ENV=production
 
 # Ports
@@ -84,44 +84,44 @@ BACKEND_PORT=4002
 POSTGRES_PORT=5435
 
 # Google OAuth (optional)
-GOOGLE_CLIENT_ID=deine-google-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 ```
 
-### Google SSO einrichten (optional)
+### Setting up Google SSO (optional)
 
-1. Gehe zur [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
-2. Erstelle eine OAuth 2.0 Client-ID (Webanwendung)
-3. Füge deine Domain zu "Autorisierte JavaScript-Quellen" hinzu
-4. Trage die Client-ID in der `.env` ein
-5. Erstelle `frontend/.env` mit `VITE_GOOGLE_CLIENT_ID=...`
+1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+2. Create an OAuth 2.0 Client ID (Web application)
+3. Add your domain to "Authorized JavaScript origins"
+4. Enter the Client ID in `.env`
+5. Create `frontend/.env` with `VITE_GOOGLE_CLIENT_ID=...`
 
-## 🏗️ Architektur
+## 🏗️ Architecture
 
 ```
 cookbook/
 ├── frontend/          # React + Vite + TypeScript
 │   ├── src/
 │   │   ├── app/
-│   │   │   ├── components/   # UI-Komponenten
-│   │   │   │   ├── WeeklyPlanner.tsx      # Wochenplaner
-│   │   │   │   ├── RecipeSearchDialog.tsx # Rezeptsuche-Dialog
+│   │   │   ├── components/   # UI components
+│   │   │   │   ├── WeeklyPlanner.tsx      # Weekly planner
+│   │   │   │   ├── RecipeSearchDialog.tsx # Recipe search dialog
 │   │   │   │   └── ...
-│   │   │   ├── services/     # API-Client
-│   │   │   ├── types/        # TypeScript-Typen
+│   │   │   ├── services/     # API client
+│   │   │   ├── types/        # TypeScript types
 │   │   │   │   ├── recipe.ts
-│   │   │   │   ├── mealplan.ts  # Wochenplaner-Typen
+│   │   │   │   ├── mealplan.ts  # Weekly planner types
 │   │   │   │   └── user.ts
-│   │   │   └── utils/        # Hilfsfunktionen
+│   │   │   └── utils/        # Utility functions
 │   │   └── main.tsx
 │   └── package.json
 │
 ├── backend/           # Node.js + Express + TypeScript
 │   ├── src/
-│   │   ├── routes/          # API-Endpunkte
-│   │   ├── middleware/      # Auth-Middleware
+│   │   ├── routes/          # API endpoints
+│   │   ├── middleware/      # Auth middleware
 │   │   └── index.ts
 │   ├── prisma/
-│   │   └── schema.prisma    # Datenbankschema
+│   │   └── schema.prisma    # Database schema
 │   └── package.json
 │
 ├── docker-compose.yml
@@ -130,75 +130,75 @@ cookbook/
 
 ### Tech Stack
 
-| Komponente | Technologie |
-|------------|-------------|
+| Component | Technology |
+|-----------|------------|
 | Frontend | React 18, Vite, TypeScript, Tailwind CSS, shadcn/ui |
-| Backend | Node.js, Express, TypeScript, Prisma ORM, Sharp (Bildverarbeitung) |
-| Datenbank | PostgreSQL 16 |
+| Backend | Node.js, Express, TypeScript, Prisma ORM, Sharp (image processing) |
+| Database | PostgreSQL 16 |
 | Auth | JWT, bcrypt, Google OAuth 2.0, TOTP (2FA) |
 | Container | Docker, Docker Compose |
 | Mobile | Kotlin, Jetpack, Retrofit, Material Design 3 |
 
-## 📅 Wochenplaner
+## 📅 Weekly Planner
 
-Der Wochenplaner ermöglicht die Planung von Mahlzeiten für eine gesamte Woche:
+The weekly planner allows you to plan meals for an entire week:
 
-**Funktionen:**
-- 📆 Kalenderansicht einer Woche (Montag bis Sonntag)
-- 🍽️ Drei Mahlzeiten pro Tag (Frühstück, Mittagessen, Abendessen)
-- 🔍 Rezeptauswahl mit Volltextsuche, Kategorie- und Sammlungsfilter
-- 👥 Individuelle Portionsangabe pro Mahlzeit
-- 🧮 Automatische Zutaten-Aggregation (gleiche Zutaten werden zusammengerechnet)
-- 🛒 Export der gesamten Einkaufsliste an Gemini/Google Keep
+**Features:**
+- 📆 Calendar view of a week (Monday to Sunday)
+- 🍽️ Three meals per day (breakfast, lunch, dinner)
+- 🔍 Recipe selection with full-text search, category and collection filter
+- 👥 Individual serving specification per meal
+- 🧮 Automatic ingredient aggregation (same ingredients are summed up)
+- 🛒 Export the entire shopping list to Gemini/Google Keep
 
-**So nutzt du den Wochenplaner:**
-1. Klicke auf "Wochenplaner" im Header
-2. Wähle die gewünschte Woche (Standard: kommende Woche)
-3. Klicke auf einen Mahlzeit-Slot und wähle ein Rezept
-4. Passe die Portionszahl mit +/- an
-5. Klicke auf "Einkaufsliste erstellen" um alle Zutaten an Gemini zu senden
+**How to use the weekly planner:**
+1. Click on "Weekly Planner" in the header
+2. Select the desired week (default: coming week)
+3. Click on a meal slot and select a recipe
+4. Adjust the serving count with +/-
+5. Click "Create shopping list" to send all ingredients to Gemini
 
 ## 📲 Android App
 
-Eine native Android-App ist als mobiles Frontend verfügbar. Der Quellcode befindet sich im separaten Repository/Ordner `cookbookApp`.
+A native Android app is available as a mobile frontend. The source code is located in the separate repository/folder `cookbookApp`.
 
-**Features der Android App:**
-- 📱 Native Android-Erfahrung
-- 🔐 Login mit Benutzername/Passwort oder Google SSO
-- 📖 Rezepte durchsuchen, anzeigen und bearbeiten
-- 📷 Fotos direkt mit der Kamera aufnehmen oder aus der Galerie hinzufügen
-- 👥 Portionsrechner mit automatischer Mengenberechnung
-- 📁 Sammlungen verwalten
-- 🛒 Zutaten an Gemini senden
-- 🔄 Automatische Netzwerkerkennung (intern/extern)
+**Android App Features:**
+- 📱 Native Android experience
+- 🔐 Login with username/password or Google SSO
+- 📖 Browse, view, and edit recipes
+- 📷 Take photos directly with the camera or add from gallery
+- 👥 Serving calculator with automatic amount calculation
+- 📁 Manage collections
+- 🛒 Send ingredients to Gemini
+- 🔄 Automatic network detection (internal/external)
 
-**Technologie:**
+**Technology:**
 - Kotlin
 - Jetpack Components (ViewModel, Navigation)
 - Retrofit + OkHttp
-- Coil für Bildverarbeitung
+- Coil for image processing
 - Material Design 3
 
-## 📥 Rezept-Import
+## 📥 Recipe Import
 
-Cookbook kann Rezepte automatisch von verschiedenen Webseiten importieren:
+Cookbook can automatically import recipes from various websites:
 
-| Webseite | Status |
-|----------|--------|
-| Chefkoch.de | ✅ Vollständig |
-| Kochbar.de | ✅ Vollständig |
-| Weitere (JSON-LD) | ✅ Automatisch |
+| Website | Status |
+|---------|--------|
+| Chefkoch.de | ✅ Full support |
+| Kochbar.de | ✅ Full support |
+| Others (JSON-LD) | ✅ Automatic |
 
-Der Import nutzt strukturierte Daten (JSON-LD/schema.org) und HTML-Parsing als Fallback.
+The import uses structured data (JSON-LD/schema.org) and HTML parsing as fallback.
 
-**So importierst du ein Rezept:**
-1. Klicke auf "Rezept importieren"
-2. Füge die URL des Rezepts ein
-3. Das Rezept wird mit Bildern, Zutaten und Anleitung importiert
+**How to import a recipe:**
+1. Click on "Import Recipe"
+2. Paste the recipe URL
+3. The recipe will be imported with images, ingredients, and instructions
 
-## 🔧 Entwicklung
+## 🔧 Development
 
-### Lokale Entwicklung
+### Local Development
 
 ```bash
 # Backend
@@ -206,66 +206,66 @@ cd backend
 npm install
 npm run dev
 
-# Frontend (neues Terminal)
+# Frontend (new terminal)
 cd frontend
 npm install
 npm run dev
 ```
 
-### Mit Docker (empfohlen)
+### With Docker (recommended)
 
 ```bash
 docker-compose up
 ```
 
-Die Anwendung nutzt Volume-Mounts und Hot-Reloading – Änderungen am Code werden sofort übernommen.
+The application uses volume mounts and hot-reloading – code changes are applied immediately.
 
-## 📝 API-Dokumentation
+## 📝 API Documentation
 
-### Authentifizierung
+### Authentication
 
-| Endpunkt | Methode | Beschreibung |
-|----------|---------|--------------|
-| `/api/auth/login` | POST | Login mit Benutzername/Passwort |
-| `/api/auth/google` | POST | Login mit Google |
-| `/api/auth/me` | GET | Aktueller Benutzer |
-| `/api/auth/change-password` | POST | Passwort ändern |
-| `/api/auth/2fa/setup` | POST | 2FA einrichten |
-| `/api/auth/2fa/verify` | POST | 2FA verifizieren |
-| `/api/auth/2fa/disable` | POST | 2FA deaktivieren |
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/auth/login` | POST | Login with username/password |
+| `/api/auth/google` | POST | Login with Google |
+| `/api/auth/me` | GET | Current user |
+| `/api/auth/change-password` | POST | Change password |
+| `/api/auth/2fa/setup` | POST | Set up 2FA |
+| `/api/auth/2fa/verify` | POST | Verify 2FA |
+| `/api/auth/2fa/disable` | POST | Disable 2FA |
 
-### Rezepte
+### Recipes
 
-| Endpunkt | Methode | Beschreibung |
-|----------|---------|--------------|
-| `/api/recipes` | GET | Alle Rezepte (mit Filter & Paginierung) |
-| `/api/recipes/:id` | GET | Einzelnes Rezept |
-| `/api/recipes` | POST | Rezept erstellen |
-| `/api/recipes/:id` | PUT | Rezept bearbeiten |
-| `/api/recipes/:id` | DELETE | Rezept löschen |
-| `/api/import` | POST | Rezept von URL importieren |
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/recipes` | GET | All recipes (with filter & pagination) |
+| `/api/recipes/:id` | GET | Single recipe |
+| `/api/recipes` | POST | Create recipe |
+| `/api/recipes/:id` | PUT | Edit recipe |
+| `/api/recipes/:id` | DELETE | Delete recipe |
+| `/api/import` | POST | Import recipe from URL |
 
-**Query-Parameter für `/api/recipes`:**
+**Query parameters for `/api/recipes`:**
 
-| Parameter | Typ | Beschreibung |
-|-----------|-----|--------------|
-| `category` | string | Filter nach Kategorie |
-| `collection` | string | Filter nach Sammlungs-ID |
-| `search` | string | Volltextsuche im Titel |
-| `full` | boolean | `true` = vollständige Rezeptdaten (Web), `false` = Thumbnails + Basis-Infos (Mobile) |
-| `limit` | number | Anzahl Rezepte pro Seite (nur ohne `full=true`, max. 100) |
-| `offset` | number | Offset für Paginierung (nur ohne `full=true`) |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `category` | string | Filter by category |
+| `collection` | string | Filter by collection ID |
+| `search` | string | Full-text search in title |
+| `full` | boolean | `true` = complete recipe data (Web), `false` = thumbnails + basic info (Mobile) |
+| `limit` | number | Number of recipes per page (only without `full=true`, max. 100) |
+| `offset` | number | Offset for pagination (only without `full=true`) |
 
-**Antwortformate:**
+**Response formats:**
 
-Mit `full=true` (Web-App):
+With `full=true` (Web app):
 ```json
 [
   { "id": "...", "title": "...", "ingredients": [...], "instructions": "...", ... }
 ]
 ```
 
-Ohne `full=true` (Mobile App, paginiert):
+Without `full=true` (Mobile app, paginated):
 ```json
 {
   "items": [{ "id": "...", "title": "...", "thumbnail": "...", ... }],
@@ -276,35 +276,35 @@ Ohne `full=true` (Mobile App, paginiert):
 }
 ```
 
-### Sammlungen & Kategorien
+### Collections & Categories
 
-| Endpunkt | Methode | Beschreibung |
-|----------|---------|--------------|
-| `/api/collections` | GET/POST | Sammlungen |
-| `/api/collections/:id/recipes/:recipeId` | POST/DELETE | Rezept zu Sammlung |
-| `/api/categories` | GET/POST/DELETE | Kategorien |
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/collections` | GET/POST | Collections |
+| `/api/collections/:id/recipes/:recipeId` | POST/DELETE | Recipe to collection |
+| `/api/categories` | GET/POST/DELETE | Categories |
 
-## 🤝 Beitragen
+## 🤝 Contributing
 
-Beiträge sind willkommen! Bitte erstelle einen Fork und einen Pull Request.
+Contributions are welcome! Please create a fork and a pull request.
 
-1. Fork erstellen
-2. Feature-Branch erstellen (`git checkout -b feature/neues-feature`)
-3. Änderungen committen (`git commit -m 'Neues Feature hinzugefügt'`)
-4. Branch pushen (`git push origin feature/neues-feature`)
-5. Pull Request erstellen
+1. Create a fork
+2. Create a feature branch (`git checkout -b feature/new-feature`)
+3. Commit changes (`git commit -m 'Added new feature'`)
+4. Push branch (`git push origin feature/new-feature`)
+5. Create pull request
 
-## 📄 Lizenz
+## 📄 License
 
-MIT License – siehe [LICENSE](LICENSE) für Details.
+MIT License – see [LICENSE](LICENSE) for details.
 
-## 🙏 Danksagungen
+## 🙏 Acknowledgments
 
-- [shadcn/ui](https://ui.shadcn.com/) – UI-Komponenten
-- [Prisma](https://www.prisma.io/) – Datenbank ORM
+- [shadcn/ui](https://ui.shadcn.com/) – UI components
+- [Prisma](https://www.prisma.io/) – Database ORM
 - [Lucide](https://lucide.dev/) – Icons
-- [Sharp](https://sharp.pixelplumbing.com/) – Bildverarbeitung & Thumbnails
-- [Retrofit](https://square.github.io/retrofit/) – HTTP-Client für Android
+- [Sharp](https://sharp.pixelplumbing.com/) – Image processing & thumbnails
+- [Retrofit](https://square.github.io/retrofit/) – HTTP client for Android
 
 ---
 
