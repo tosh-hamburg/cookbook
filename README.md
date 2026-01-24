@@ -27,10 +27,47 @@ Cookbook is a self-hosted web application for managing cooking recipes. Import r
 
 ## 🖼️ Screenshots
 
-<details>
-<summary>Show screenshots</summary>
+### Web Application
 
-*Insert screenshots here*
+<details>
+<summary>Show Web App Screenshots</summary>
+
+#### Recipe Overview
+Browse and filter your recipes by categories and collections.
+
+![Recipe Overview](screenshots/web-recipe-list.png)
+
+#### Recipe Detail View
+View recipe details with images, ingredients (with serving calculator), and step-by-step instructions. Add recipes directly to your weekly planner from here.
+
+![Recipe Detail](screenshots/web-recipe-detail.png)
+
+#### Weekly Planner
+Plan your meals for the entire week with automatic ingredient aggregation.
+
+![Weekly Planner](screenshots/web-weekly-planner.png)
+
+</details>
+
+### Android App
+
+<details>
+<summary>Show Android App Screenshots</summary>
+
+#### Recipe Overview (Mobile)
+Browse recipes in a clean, card-based grid layout.
+
+![Recipe Overview Mobile](screenshots/android-recipe-list.png)
+
+#### Recipe Detail (Mobile)
+View full recipe details with serving calculator and quick actions.
+
+![Recipe Detail Mobile](screenshots/android-recipe-detail.png)
+
+#### Weekly Planner (Mobile)
+Manage your weekly meal plan with an intuitive day-by-day view.
+
+![Weekly Planner Mobile](screenshots/android-weekly-planner.png)
 
 </details>
 
