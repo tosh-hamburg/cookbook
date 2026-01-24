@@ -76,11 +76,13 @@ export function Login({ onLogin }: LoginProps) {
       }
     } catch (err) {
       console.error('Google login error:', err);
-      setError(t.login.googleError);
+      // Show backend error message or fallback
+      const errorMessage = err instanceof Error ? err.message : t.login.googleError;
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
-  }, [onLogin]);
+  }, [onLogin, t.login.googleError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

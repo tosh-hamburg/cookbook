@@ -56,16 +56,19 @@ async function fetchApi<T>(
   });
 
   if (!response.ok) {
-    // Bei abgelaufenem Token (401) automatisch abmelden
-    if (response.status === 401) {
+    const errorData = await response.json().catch(() => ({}));
+    const errorMessage = errorData.error || `HTTP error ${response.status}`;
+    
+    // Bei abgelaufenem Token (401) während API-Aufrufen automatisch abmelden
+    // ABER: Nicht bei Login-Endpoints (die geben 401 bei fehlgeschlagener Authentifizierung)
+    if (response.status === 401 && !endpoint.startsWith('/auth/')) {
       removeToken();
       // Seite neu laden, um zur Login-Seite zu gelangen
       window.location.reload();
       throw new Error('Token abgelaufen - Automatische Abmeldung');
     }
     
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || `HTTP error ${response.status}`);
+    throw new Error(errorMessage);
   }
 
   return response.json();

@@ -98,7 +98,7 @@ router.post('/google', async (req, res: Response) => {
 
     const { sub: googleId, email, name, picture } = payload;
 
-    // Find or create user - also check if username matches email
+    // Find user by googleId, email or username
     let user = await prisma.user.findFirst({
       where: {
         OR: [
@@ -110,17 +110,13 @@ router.post('/google', async (req, res: Response) => {
     });
 
     if (!user) {
-      // Create new user from Google account
-      user = await prisma.user.create({
-        data: {
-          username: email.split('@')[0] + '_' + Math.random().toString(36).substring(2, 6),
-          email,
-          googleId,
-          avatar: picture,
-          role: 'user'
-        }
+      // Do NOT create new users automatically - only existing users can login
+      return res.status(401).json({ 
+        error: 'Kein Benutzerkonto mit dieser E-Mail-Adresse gefunden. Bitte kontaktieren Sie einen Administrator.' 
       });
-    } else if (!user.googleId) {
+    }
+    
+    if (!user.googleId) {
       // Link existing user with Google account
       user = await prisma.user.update({
         where: { id: user.id },
