@@ -24,6 +24,7 @@ export const de: Translations = {
     administration: 'Verwaltung',
     logout: 'Abmelden',
     loggedOutSuccess: 'Erfolgreich abgemeldet',
+    language: 'Sprache',
   },
   
   // Login

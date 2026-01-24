@@ -13,12 +13,14 @@ import { loadCategories } from '@/app/utils/categories';
 import { Toaster } from '@/app/components/ui/sonner';
 import { Button } from '@/app/components/ui/button';
 import { toast } from 'sonner';
-import { LogOut, Settings, Loader2, CalendarDays, Smartphone, Menu } from 'lucide-react';
+import { LogOut, Settings, Loader2, CalendarDays, Smartphone, Menu, Languages } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from '@/app/components/ui/dropdown-menu';
 import { settingsApi } from '@/app/services/api';
 import { useTranslation } from '@/app/i18n';
@@ -26,7 +28,7 @@ import { useTranslation } from '@/app/i18n';
 type View = 'list' | 'detail' | 'create' | 'edit' | 'admin' | 'planner';
 
 export default function App() {
-  const { t } = useTranslation();
+  const { t, language, setLanguage } = useTranslation();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [currentView, setCurrentView] = useState<View>('list');
@@ -289,6 +291,37 @@ export default function App() {
               <Smartphone className="h-4 w-4 mr-2" />
               App
             </Button>
+            
+            {/* Language Switcher Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="outline"
+                  className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white"
+                  title={t.app.language}
+                >
+                  <Languages className="h-4 w-4 mr-2" />
+                  {language.toUpperCase()}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>{t.app.language}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={() => setLanguage('de')}
+                  className={language === 'de' ? 'bg-accent' : ''}
+                >
+                  🇩🇪 Deutsch
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => setLanguage('en')}
+                  className={language === 'en' ? 'bg-accent' : ''}
+                >
+                  🇬🇧 English
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
             {isAdmin && currentView !== 'admin' && (
               <Button 
                 variant="outline" 
@@ -332,12 +365,35 @@ export default function App() {
                   <Smartphone className="h-4 w-4 mr-2" />
                   {t.app.downloadApp}
                 </DropdownMenuItem>
+                
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="flex items-center">
+                  <Languages className="h-4 w-4 mr-2" />
+                  {t.app.language}
+                </DropdownMenuLabel>
+                <DropdownMenuItem 
+                  onClick={() => setLanguage('de')}
+                  className={language === 'de' ? 'bg-accent' : ''}
+                >
+                  🇩🇪 Deutsch
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => setLanguage('en')}
+                  className={language === 'en' ? 'bg-accent' : ''}
+                >
+                  🇬🇧 English
+                </DropdownMenuItem>
+                
                 {isAdmin && currentView !== 'admin' && (
-                  <DropdownMenuItem onClick={handleOpenAdmin}>
-                    <Settings className="h-4 w-4 mr-2" />
-                    {t.app.administration}
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleOpenAdmin}>
+                      <Settings className="h-4 w-4 mr-2" />
+                      {t.app.administration}
+                    </DropdownMenuItem>
+                  </>
                 )}
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="h-4 w-4 mr-2" />
                   {t.app.logout}

@@ -26,6 +26,7 @@ export interface Translations {
     administration: string;
     logout: string;
     loggedOutSuccess: string;
+    language: string;
   };
   
   // Login

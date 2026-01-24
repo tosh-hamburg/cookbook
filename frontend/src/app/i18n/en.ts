@@ -24,6 +24,7 @@ export const en: Translations = {
     administration: 'Administration',
     logout: 'Logout',
     loggedOutSuccess: 'Successfully logged out',
+    language: 'Language',
   },
   
   // Login
