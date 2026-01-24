@@ -26,40 +26,7 @@ export function Login({ onLogin }: LoginProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [requires2FA, setRequires2FA] = useState(false);
   const [pendingGoogleCredential, setPendingGoogleCredential] = useState<string | null>(null);
-
-  // Initialize Google Sign-In
-  useEffect(() => {
-    if (!GOOGLE_CLIENT_ID) return;
-
-    const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.async = true;
-    script.defer = true;
-    document.head.appendChild(script);
-
-    script.onload = () => {
-      if (window.google) {
-        window.google.accounts.id.initialize({
-          client_id: GOOGLE_CLIENT_ID,
-          callback: handleGoogleResponse,
-        });
-        window.google.accounts.id.renderButton(
-          document.getElementById('google-signin-button'),
-          { 
-            theme: 'outline', 
-            size: 'large', 
-            width: '100%',
-            text: 'signin_with',
-            locale: language
-          }
-        );
-      }
-    };
-
-    return () => {
-      document.head.removeChild(script);
-    };
-  }, []);
+  const [googleInitialized, setGoogleInitialized] = useState(false);
 
   const handleGoogleResponse = useCallback(async (response: { credential: string }) => {
     setError('');
@@ -83,6 +50,47 @@ export function Login({ onLogin }: LoginProps) {
       setIsLoading(false);
     }
   }, [onLogin, t.login.googleError]);
+
+  // Initialize Google Sign-In - only once
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID || googleInitialized) return;
+
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+
+    script.onload = () => {
+      if (window.google) {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleResponse,
+        });
+        
+        const buttonContainer = document.getElementById('google-signin-button');
+        if (buttonContainer) {
+          window.google.accounts.id.renderButton(
+            buttonContainer,
+            { 
+              theme: 'outline', 
+              size: 'large', 
+              width: '100%',
+              text: 'signin_with',
+              locale: language
+            }
+          );
+        }
+        setGoogleInitialized(true);
+      }
+    };
+
+    return () => {
+      if (document.head.contains(script)) {
+        document.head.removeChild(script);
+      }
+    };
+  }, [GOOGLE_CLIENT_ID, googleInitialized, handleGoogleResponse, language]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
