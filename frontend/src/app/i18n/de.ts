@@ -191,6 +191,12 @@ export const de: Translations = {
     noMeals: 'Noch keine Mahlzeiten geplant',
     noMealsDescription: 'Klicken Sie auf einen Tag und fügen Sie Rezepte zu Ihrem Wochenplan hinzu.',
     alreadySentGemini: 'Bereits an Gemini gesendet',
+    addToWeekPlanner: 'Zum Wochenplaner',
+    selectSlotFirst: 'Bitte wählen Sie einen Slot aus',
+    recipeAdded: 'Rezept zum Wochenplaner hinzugefügt',
+    selectSlotDescription: 'Wählen Sie einen Tag und eine Mahlzeit aus, um das Rezept hinzuzufügen.',
+    adding: 'Hinzufügen...',
+    addRecipe: 'Rezept hinzufügen',
   },
   
   // Admin Panel

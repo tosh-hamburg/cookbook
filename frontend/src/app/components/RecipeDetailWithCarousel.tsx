@@ -1,4 +1,4 @@
-import { Clock, Flame, Pencil, Trash2, ExternalLink, Users, Minus, Plus, ShoppingCart, FolderPlus, X } from 'lucide-react';
+import { Clock, Flame, Pencil, Trash2, ExternalLink, Users, Minus, Plus, ShoppingCart, FolderPlus, X, Calendar } from 'lucide-react';
 import Slider from 'react-slick';
 import { toast } from 'sonner';
 import type { Recipe, Ingredient } from '@/app/types/recipe';
@@ -18,6 +18,7 @@ import {
 import { useState, useMemo, useEffect } from 'react';
 import { collectionsApi, type Collection } from '@/app/services/api';
 import { useTranslation } from '@/app/i18n';
+import { AddToWeekPlannerDialog } from '@/app/components/AddToWeekPlannerDialog';
 
 interface RecipeDetailProps {
   recipe: Recipe;
@@ -74,6 +75,7 @@ export function RecipeDetailWithCarousel({ recipe, onClose, onEdit, onDelete, is
   const [availableCollections, setAvailableCollections] = useState<Collection[]>([]);
   const [isLoadingCollections, setIsLoadingCollections] = useState(false);
   const [showCollectionMenu, setShowCollectionMenu] = useState(false);
+  const [showAddToWeekPlannerDialog, setShowAddToWeekPlannerDialog] = useState(false);
   
   // Load collections for admin users
   useEffect(() => {
@@ -210,6 +212,10 @@ ${ingredientsList}`;
           ← {t.recipeDetail.back}
         </Button>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowAddToWeekPlannerDialog(true)}>
+            <Calendar className="h-4 w-4 mr-2" />
+            {t.planner.addToWeekPlanner || 'Zum Wochenplaner'}
+          </Button>
           <Button variant="outline" onClick={onEdit}>
             <Pencil className="h-4 w-4 mr-2" />
             {t.recipeDetail.edit}
@@ -445,6 +451,16 @@ ${ingredientsList}`;
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Add to Week Planner Dialog */}
+      <AddToWeekPlannerDialog
+        recipe={recipe}
+        open={showAddToWeekPlannerDialog}
+        onOpenChange={setShowAddToWeekPlannerDialog}
+        onSuccess={() => {
+          toast.success(t.planner.recipeAdded || 'Rezept erfolgreich hinzugefügt');
+        }}
+      />
     </div>
   );
 }

@@ -191,6 +191,12 @@ export const en: Translations = {
     noMeals: 'No meals planned yet',
     noMealsDescription: 'Click on a day and add recipes to your weekly plan.',
     alreadySentGemini: 'Already sent to Gemini',
+    addToWeekPlanner: 'Add to Weekly Planner',
+    selectSlotFirst: 'Please select a slot',
+    recipeAdded: 'Recipe added to weekly planner',
+    selectSlotDescription: 'Select a day and meal to add the recipe.',
+    adding: 'Adding...',
+    addRecipe: 'Add Recipe',
   },
   
   // Admin Panel
