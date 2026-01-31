@@ -1,4 +1,4 @@
-import { Plus, Search, Filter, X } from 'lucide-react';
+import { Plus, Search, Filter, X, FolderOpen } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import type { Recipe } from '@/app/types/recipe';
 import { RecipeCard } from '@/app/components/RecipeCard';
@@ -27,7 +27,7 @@ export function RecipeList({ recipes, onSelectRecipe, onCreateNew, onImport }: R
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [selectedCollection, setSelectedCollection] = useState<string>('');
+  const [selectedCollections, setSelectedCollections] = useState<Set<string>>(new Set());
   const [categories, setCategories] = useState<string[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
 
@@ -57,9 +57,9 @@ export function RecipeList({ recipes, onSelectRecipe, onCreateNew, onImport }: R
     const matchesCategory = !selectedCategory || 
       recipe.categories.includes(selectedCategory);
     
-    // Collection filter
-    const matchesCollection = !selectedCollection ||
-      recipe.collections?.some(col => col.id === selectedCollection);
+    // Collection filter - match if recipe is in ANY of the selected collections (OR logic)
+    const matchesCollection = selectedCollections.size === 0 ||
+      recipe.collections?.some(col => selectedCollections.has(col.id));
     
     return matchesSearch && matchesCategory && matchesCollection;
   });
@@ -67,10 +67,22 @@ export function RecipeList({ recipes, onSelectRecipe, onCreateNew, onImport }: R
   const clearFilters = () => {
     setSearchQuery('');
     setSelectedCategory('');
-    setSelectedCollection('');
+    setSelectedCollections(new Set());
   };
 
-  const hasActiveFilters = searchQuery || selectedCategory || selectedCollection;
+  const toggleCollection = (collectionId: string) => {
+    setSelectedCollections(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(collectionId)) {
+        newSet.delete(collectionId);
+      } else {
+        newSet.add(collectionId);
+      }
+      return newSet;
+    });
+  };
+
+  const hasActiveFilters = searchQuery || selectedCategory || selectedCollections.size > 0;
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -113,18 +125,6 @@ export function RecipeList({ recipes, onSelectRecipe, onCreateNew, onImport }: R
             </SelectContent>
           </Select>
 
-          <Select value={selectedCollection || "all"} onValueChange={(val) => setSelectedCollection(val === "all" ? "" : val)}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder={t.filters.collection} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t.filters.allCollections}</SelectItem>
-              {collections.map(col => (
-                <SelectItem key={col.id} value={col.id}>{col.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
           {hasActiveFilters && (
             <Button variant="ghost" size="sm" onClick={clearFilters}>
               <X className="h-4 w-4 mr-1" />
@@ -133,19 +133,40 @@ export function RecipeList({ recipes, onSelectRecipe, onCreateNew, onImport }: R
           )}
         </div>
 
+        {/* Collection Filter Chips */}
+        {collections.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 mt-3">
+            <FolderOpen className="h-4 w-4 text-muted-foreground" />
+            <Badge 
+              variant={selectedCollections.size === 0 ? "default" : "outline"}
+              className="cursor-pointer hover:bg-primary/80 transition-colors"
+              onClick={() => setSelectedCollections(new Set())}
+            >
+              {t.filters.allCollections}
+            </Badge>
+            {collections.map(col => (
+              <Badge 
+                key={col.id}
+                variant={selectedCollections.has(col.id) ? "default" : "outline"}
+                className="cursor-pointer hover:bg-primary/80 transition-colors"
+                onClick={() => toggleCollection(col.id)}
+              >
+                {col.name}
+                {selectedCollections.has(col.id) && (
+                  <X className="h-3 w-3 ml-1" />
+                )}
+              </Badge>
+            ))}
+          </div>
+        )}
+
         {/* Active Filters Display */}
-        {hasActiveFilters && (
+        {(selectedCategory) && (
           <div className="flex flex-wrap gap-2 mt-3">
             {selectedCategory && (
               <Badge variant="secondary" className="gap-1">
                 {t.filters.category}: {selectedCategory}
                 <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedCategory('')} />
-              </Badge>
-            )}
-            {selectedCollection && (
-              <Badge variant="secondary" className="gap-1">
-                {t.filters.collection}: {collections.find(c => c.id === selectedCollection)?.name}
-                <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedCollection('')} />
               </Badge>
             )}
           </div>

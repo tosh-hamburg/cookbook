@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Search, Filter, X, Check, ChevronDown } from 'lucide-react';
+import { Search, Filter, X, Check, ChevronDown, FolderOpen } from 'lucide-react';
 import type { Recipe } from '@/app/types/recipe';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
@@ -44,7 +44,7 @@ export function RecipeSearchDialog({
 }: RecipeSearchDialogProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [selectedCollection, setSelectedCollection] = useState<string>('');
+  const [selectedCollections, setSelectedCollections] = useState<Set<string>>(new Set());
   const [categories, setCategories] = useState<string[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [displayCount, setDisplayCount] = useState(INITIAL_DISPLAY_COUNT);
@@ -72,7 +72,7 @@ export function RecipeSearchDialog({
     if (open) {
       setSearchQuery('');
       setSelectedCategory('');
-      setSelectedCollection('');
+      setSelectedCollections(new Set());
       setDisplayCount(INITIAL_DISPLAY_COUNT);
     }
   }, [open]);
@@ -80,7 +80,7 @@ export function RecipeSearchDialog({
   // Reset display count when filters change
   useEffect(() => {
     setDisplayCount(INITIAL_DISPLAY_COUNT);
-  }, [searchQuery, selectedCategory, selectedCollection]);
+  }, [searchQuery, selectedCategory, selectedCollections]);
 
   const filteredRecipes = useMemo(() => {
     return recipes.filter(recipe => {
@@ -93,13 +93,13 @@ export function RecipeSearchDialog({
       const matchesCategory = !selectedCategory || 
         recipe.categories.includes(selectedCategory);
       
-      // Collection filter
-      const matchesCollection = !selectedCollection ||
-        recipe.collections?.some(col => col.id === selectedCollection);
+      // Collection filter - match if recipe is in ANY of the selected collections (OR logic)
+      const matchesCollection = selectedCollections.size === 0 ||
+        recipe.collections?.some(col => selectedCollections.has(col.id));
       
       return matchesSearch && matchesCategory && matchesCollection;
     });
-  }, [recipes, searchQuery, selectedCategory, selectedCollection]);
+  }, [recipes, searchQuery, selectedCategory, selectedCollections]);
 
   // Only display a limited number of recipes for performance
   const displayedRecipes = useMemo(() => {
@@ -115,10 +115,22 @@ export function RecipeSearchDialog({
   const clearFilters = () => {
     setSearchQuery('');
     setSelectedCategory('');
-    setSelectedCollection('');
+    setSelectedCollections(new Set());
   };
 
-  const hasActiveFilters = searchQuery || selectedCategory || selectedCollection;
+  const toggleCollection = (collectionId: string) => {
+    setSelectedCollections(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(collectionId)) {
+        newSet.delete(collectionId);
+      } else {
+        newSet.add(collectionId);
+      }
+      return newSet;
+    });
+  };
+
+  const hasActiveFilters = searchQuery || selectedCategory || selectedCollections.size > 0;
 
   const handleSelect = (recipe: Recipe) => {
     onSelect(recipe);
@@ -162,18 +174,6 @@ export function RecipeSearchDialog({
               </SelectContent>
             </Select>
 
-            <Select value={selectedCollection || "all"} onValueChange={(val) => setSelectedCollection(val === "all" ? "" : val)}>
-              <SelectTrigger className="w-[160px] h-9">
-                <SelectValue placeholder="Sammlung" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Alle Sammlungen</SelectItem>
-                {collections.map(col => (
-                  <SelectItem key={col.id} value={col.id}>{col.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
             {hasActiveFilters && (
               <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9">
                 <X className="h-4 w-4 mr-1" />
@@ -182,21 +182,40 @@ export function RecipeSearchDialog({
             )}
           </div>
 
+          {/* Collection Filter Chips */}
+          {collections.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <FolderOpen className="h-4 w-4 text-muted-foreground" />
+              <Badge 
+                variant={selectedCollections.size === 0 ? "default" : "outline"}
+                className="cursor-pointer hover:bg-primary/80 transition-colors text-xs"
+                onClick={() => setSelectedCollections(new Set())}
+              >
+                Alle
+              </Badge>
+              {collections.map(col => (
+                <Badge 
+                  key={col.id}
+                  variant={selectedCollections.has(col.id) ? "default" : "outline"}
+                  className="cursor-pointer hover:bg-primary/80 transition-colors text-xs"
+                  onClick={() => toggleCollection(col.id)}
+                >
+                  {col.name}
+                  {selectedCollections.has(col.id) && (
+                    <X className="h-3 w-3 ml-1" />
+                  )}
+                </Badge>
+              ))}
+            </div>
+          )}
+
           {/* Active Filters Display */}
-          {hasActiveFilters && (
+          {selectedCategory && (
             <div className="flex flex-wrap gap-2">
-              {selectedCategory && (
-                <Badge variant="secondary" className="gap-1">
-                  {selectedCategory}
-                  <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedCategory('')} />
-                </Badge>
-              )}
-              {selectedCollection && (
-                <Badge variant="secondary" className="gap-1">
-                  {collections.find(c => c.id === selectedCollection)?.name}
-                  <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedCollection('')} />
-                </Badge>
-              )}
+              <Badge variant="secondary" className="gap-1">
+                {selectedCategory}
+                <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedCategory('')} />
+              </Badge>
             </div>
           )}
         </div>

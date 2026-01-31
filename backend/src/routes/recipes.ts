@@ -144,7 +144,7 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
     const prisma: PrismaClient = req.app.locals.prisma;
     
     // Parse filter parameters
-    const { category, collection, search } = req.query;
+    const { category, collection, collections, search } = req.query;
     
     // Check if full recipe data is requested (for web app)
     const fullData = req.query.full === 'true';
@@ -168,11 +168,24 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
       };
     }
     
-    // Filter by collection
-    if (collection && typeof collection === 'string') {
+    // Filter by collection(s)
+    // Support both single collection ID and comma-separated list of IDs
+    const collectionIds: string[] = [];
+    
+    if (collections && typeof collections === 'string') {
+      // Handle comma-separated list of collection IDs
+      collectionIds.push(...collections.split(',').map(id => id.trim()).filter(id => id));
+    } else if (collection && typeof collection === 'string') {
+      // Handle single collection ID (backwards compatibility)
+      collectionIds.push(collection);
+    }
+    
+    if (collectionIds.length > 0) {
       where.collections = {
         some: {
-          collectionId: collection
+          collectionId: {
+            in: collectionIds
+          }
         }
       };
     }
