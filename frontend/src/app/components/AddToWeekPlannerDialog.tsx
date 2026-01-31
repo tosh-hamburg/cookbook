@@ -11,6 +11,17 @@ import { getCurrentWeekStart, getNextWeekStart, formatDateShort, formatWeekRange
 import { mealPlansApi, type MealPlanData } from '@/app/services/api';
 import { useTranslation } from '@/app/i18n';
 
+// Get the default week start (next Monday, consistent with WeeklyPlanner)
+function getDefaultWeekStart(): Date {
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const daysUntilNextMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
+  const nextMonday = new Date(now);
+  nextMonday.setDate(now.getDate() + daysUntilNextMonday);
+  nextMonday.setHours(0, 0, 0, 0);
+  return nextMonday;
+}
+
 interface AddToWeekPlannerDialogProps {
   recipe: Recipe;
   open: boolean;
@@ -41,7 +52,7 @@ function getWeekNumber(date: Date): number {
 
 export function AddToWeekPlannerDialog({ recipe, open, onOpenChange, onSuccess }: AddToWeekPlannerDialogProps) {
   const { t } = useTranslation();
-  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(getCurrentWeekStart());
+  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(getDefaultWeekStart());
   const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(null);
   const [selectedMealType, setSelectedMealType] = useState<MealType | null>(null);
   const [isAdding, setIsAdding] = useState(false);
@@ -187,7 +198,7 @@ export function AddToWeekPlannerDialog({ recipe, open, onOpenChange, onSuccess }
     if (open) {
       setSelectedDayIndex(null);
       setSelectedMealType(null);
-      setCurrentWeekStart(getCurrentWeekStart());
+      setCurrentWeekStart(getDefaultWeekStart());
     }
   }, [open]);
 
