@@ -22,7 +22,15 @@ const PORT = process.env.PORT || 4002;
 // SECURITY MIDDLEWARE
 // =============================================================================
 
-// 1. Disable X-Powered-By header
+// 1. Trust Proxy Configuration
+// Required for Synology Reverse Proxy → Frontend → Backend setup
+// Trust only local/internal networks (more secure than 'true')
+// - loopback: 127.0.0.0/8 (localhost)
+// - linklocal: 169.254.0.0/16 (link-local)
+// - uniquelocal: fc00::/7 (private IPv6), 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 (private IPv4)
+app.set('trust proxy', 'loopback, linklocal, uniquelocal');
+
+// 2. Disable X-Powered-By header
 app.disable('x-powered-by');
 
 // 2. Security Headers with Helmet
