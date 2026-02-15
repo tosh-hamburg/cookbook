@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client';
 import { OAuth2Client } from 'google-auth-library';
 import speakeasy from 'speakeasy';
 import QRCode from 'qrcode';
-import { AuthRequest, authenticateToken, requireAdmin, generateToken } from '../middleware/auth';
+import { AuthRequest, authenticateToken, requireAdmin, generateToken, verifyTokenIgnoringExpiration } from '../middleware/auth';
 
 const router = Router();
 
@@ -146,6 +146,62 @@ router.post('/google', async (req, res: Response) => {
   } catch (error) {
     console.error('Google login error:', error);
     res.status(500).json({ error: 'Fehler bei der Google-Anmeldung' });
+  }
+});
+
+// Refresh token (accepts expired tokens within 30-day grace period)
+router.post('/refresh', async (req, res: Response) => {
+  try {
+    const prisma: PrismaClient = req.app.locals.prisma;
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+      return res.status(401).json({ error: 'Token erforderlich' });
+    }
+
+    // Verify token signature (ignore expiration)
+    const decoded = verifyTokenIgnoringExpiration(token);
+    if (!decoded) {
+      return res.status(403).json({ error: 'Ungültiger Token' });
+    }
+
+    // Check grace period: reject tokens expired more than 30 days ago
+    const MAX_GRACE_SECONDS = 30 * 24 * 60 * 60; // 30 days
+    if (decoded.exp) {
+      const now = Math.floor(Date.now() / 1000);
+      if (now - decoded.exp > MAX_GRACE_SECONDS) {
+        return res.status(403).json({ error: 'Token zu lange abgelaufen. Bitte erneut anmelden.' });
+      }
+    }
+
+    // Verify user still exists
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id }
+    });
+
+    if (!user) {
+      return res.status(401).json({ error: 'Benutzer nicht gefunden' });
+    }
+
+    // Issue fresh token
+    const newToken = generateToken(user);
+
+    res.json({
+      token: newToken,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar,
+        twoFactorEnabled: user.twoFactorEnabled,
+        createdAt: user.createdAt.toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Token refresh error:', error);
+    res.status(500).json({ error: 'Fehler beim Erneuern des Tokens' });
   }
 });
 

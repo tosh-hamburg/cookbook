@@ -50,3 +50,15 @@ export const generateToken = (user: { id: string; username: string; role: string
     { expiresIn: '7d' }
   );
 };
+
+/**
+ * Verify a token ignoring expiration (for refresh within grace period).
+ * Returns the decoded payload or null if signature is invalid.
+ */
+export const verifyTokenIgnoringExpiration = (token: string): (JwtPayload & { exp?: number }) | null => {
+  try {
+    return jwt.verify(token, JWT_SECRET, { ignoreExpiration: true }) as JwtPayload & { exp?: number };
+  } catch {
+    return null;
+  }
+};
