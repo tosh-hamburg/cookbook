@@ -7,6 +7,7 @@ import { RecipeForm } from '@/app/components/RecipeForm';
 import { Login } from '@/app/components/Login';
 import { AdminPanel } from '@/app/components/AdminPanel';
 import { WeeklyPlanner } from '@/app/components/WeeklyPlanner';
+import { getCurrentWeekStart } from '@/app/types/mealplan';
 import { loadRecipes, addRecipe, updateRecipe, deleteRecipe } from '@/app/utils/localStorage';
 import { initializeAuth, getCurrentUser, logout } from '@/app/utils/auth';
 import { loadCategories } from '@/app/utils/categories';
@@ -39,16 +40,7 @@ export default function App() {
   const [geminiPrompt, setGeminiPrompt] = useState<string>('');
   
   // Weekly planner state (persisted across view changes)
-  const [plannerWeekStart, setPlannerWeekStart] = useState<Date>(() => {
-    // Start with next week
-    const now = new Date();
-    const dayOfWeek = now.getDay();
-    const daysUntilNextMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
-    const nextMonday = new Date(now);
-    nextMonday.setDate(now.getDate() + daysUntilNextMonday);
-    nextMonday.setHours(0, 0, 0, 0);
-    return nextMonday;
-  });
+  const [plannerWeekStart, setPlannerWeekStart] = useState<Date>(() => getCurrentWeekStart());
   const [excludedIngredients, setExcludedIngredients] = useState<Set<string>>(new Set());
   const [sentIngredients, setSentIngredients] = useState<Set<string>>(new Set());
 

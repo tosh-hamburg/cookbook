@@ -57,11 +57,25 @@ function normalizeWeekStart(date: Date): Date {
   return normalized;
 }
 
-// Get meal plan for a specific week
+// Helper to find or create a shared meal plan for a given week
+async function findOrCreateMealPlan(prisma: PrismaClient, weekStart: Date, userId: string) {
+  let mealPlan = await prisma.mealPlan.findFirst({
+    where: { weekStart }
+  });
+
+  if (!mealPlan) {
+    mealPlan = await prisma.mealPlan.create({
+      data: { userId, weekStart }
+    });
+  }
+
+  return mealPlan;
+}
+
+// Get meal plan for a specific week (shared across all users)
 router.get('/:weekStart', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const prisma = req.app.locals.prisma as PrismaClient;
-    const userId = req.user!.id;
     const weekStartParam = req.params.weekStart as string;
 
     // Parse and normalize the week start date
@@ -71,14 +85,9 @@ router.get('/:weekStart', authenticateToken, async (req: AuthRequest, res: Respo
       return res.status(400).json({ error: 'Ungültiges Datum' });
     }
 
-    // Find existing meal plan
-    const mealPlan = await prisma.mealPlan.findUnique({
-      where: {
-        userId_weekStart: {
-          userId,
-          weekStart
-        }
-      },
+    // Find existing meal plan (shared - no userId filter)
+    const mealPlan = await prisma.mealPlan.findFirst({
+      where: { weekStart },
       include: mealPlanInclude
     });
 
@@ -100,7 +109,7 @@ router.get('/:weekStart', authenticateToken, async (req: AuthRequest, res: Respo
   }
 });
 
-// Create or update meal plan for a week
+// Create or update meal plan for a week (shared across all users)
 router.put('/:weekStart', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const prisma = req.app.locals.prisma as PrismaClient;
@@ -119,22 +128,8 @@ router.put('/:weekStart', authenticateToken, async (req: AuthRequest, res: Respo
       return res.status(400).json({ error: 'Mahlzeiten müssen ein Array sein' });
     }
 
-    // Upsert meal plan
-    const mealPlan = await prisma.mealPlan.upsert({
-      where: {
-        userId_weekStart: {
-          userId,
-          weekStart
-        }
-      },
-      create: {
-        userId,
-        weekStart
-      },
-      update: {
-        updatedAt: new Date()
-      }
-    });
+    // Find or create shared meal plan
+    const mealPlan = await findOrCreateMealPlan(prisma, weekStart, userId);
 
     // Delete existing meal slots
     await prisma.mealSlot.deleteMany({
@@ -172,7 +167,7 @@ router.put('/:weekStart', authenticateToken, async (req: AuthRequest, res: Respo
   }
 });
 
-// Update a single meal slot
+// Update a single meal slot (shared across all users)
 router.patch('/:weekStart/slot', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const prisma = req.app.locals.prisma as PrismaClient;
@@ -191,22 +186,8 @@ router.patch('/:weekStart/slot', authenticateToken, async (req: AuthRequest, res
       return res.status(400).json({ error: 'Ungültige Slot-Parameter' });
     }
 
-    // Upsert meal plan
-    const mealPlan = await prisma.mealPlan.upsert({
-      where: {
-        userId_weekStart: {
-          userId,
-          weekStart
-        }
-      },
-      create: {
-        userId,
-        weekStart
-      },
-      update: {
-        updatedAt: new Date()
-      }
-    });
+    // Find or create shared meal plan
+    const mealPlan = await findOrCreateMealPlan(prisma, weekStart, userId);
 
     if (recipeId) {
       // Upsert meal slot
@@ -254,7 +235,7 @@ router.patch('/:weekStart/slot', authenticateToken, async (req: AuthRequest, res
   }
 });
 
-// Mark ingredients as sent to Gemini
+// Mark ingredients as sent to Gemini (shared across all users)
 router.post('/:weekStart/sent-ingredients', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const prisma = req.app.locals.prisma as PrismaClient;
@@ -273,39 +254,36 @@ router.post('/:weekStart/sent-ingredients', authenticateToken, async (req: AuthR
       return res.status(400).json({ error: 'Zutaten müssen ein Array sein' });
     }
 
-    // Get or create meal plan
-    const mealPlan = await prisma.mealPlan.upsert({
-      where: {
-        userId_weekStart: {
-          userId,
-          weekStart
-        }
-      },
-      create: {
-        userId,
-        weekStart,
-        sentIngredients: ingredients
-      },
-      update: {
-        // Merge new ingredients with existing ones (avoid duplicates)
+    // Find or create shared meal plan
+    const mealPlan = await findOrCreateMealPlan(prisma, weekStart, userId);
+
+    // Merge new ingredients with existing ones
+    await prisma.mealPlan.update({
+      where: { id: mealPlan.id },
+      data: {
         sentIngredients: {
           push: ingredients
         }
       }
     });
 
+    // Re-fetch to get updated data
+    const updated = (await prisma.mealPlan.findUnique({
+      where: { id: mealPlan.id }
+    }))!;
+
     // Get unique ingredients
-    const uniqueIngredients = [...new Set(mealPlan.sentIngredients)];
-    
+    const uniqueIngredients = [...new Set(updated.sentIngredients)];
+
     // Update with unique ingredients if there were duplicates
-    if (uniqueIngredients.length !== mealPlan.sentIngredients.length) {
+    if (uniqueIngredients.length !== updated.sentIngredients.length) {
       await prisma.mealPlan.update({
         where: { id: mealPlan.id },
         data: { sentIngredients: uniqueIngredients }
       });
     }
 
-    res.json({ 
+    res.json({
       sentIngredients: uniqueIngredients,
       message: `${ingredients.length} Zutaten als gesendet markiert`
     });
@@ -315,11 +293,10 @@ router.post('/:weekStart/sent-ingredients', authenticateToken, async (req: AuthR
   }
 });
 
-// Reset sent ingredients for a week
+// Reset sent ingredients for a week (shared across all users)
 router.delete('/:weekStart/sent-ingredients', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const prisma = req.app.locals.prisma as PrismaClient;
-    const userId = req.user!.id;
     const weekStartParam = req.params.weekStart as string;
 
     // Parse and normalize the week start date
@@ -330,10 +307,7 @@ router.delete('/:weekStart/sent-ingredients', authenticateToken, async (req: Aut
     }
 
     await prisma.mealPlan.updateMany({
-      where: {
-        userId,
-        weekStart
-      },
+      where: { weekStart },
       data: {
         sentIngredients: []
       }
@@ -346,7 +320,7 @@ router.delete('/:weekStart/sent-ingredients', authenticateToken, async (req: Aut
   }
 });
 
-// Exclude ingredients from shopping list
+// Exclude ingredients from shopping list (shared across all users)
 router.post('/:weekStart/excluded-ingredients', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const prisma = req.app.locals.prisma as PrismaClient;
@@ -365,39 +339,36 @@ router.post('/:weekStart/excluded-ingredients', authenticateToken, async (req: A
       return res.status(400).json({ error: 'Zutaten müssen ein Array sein' });
     }
 
-    // Get or create meal plan
-    const mealPlan = await prisma.mealPlan.upsert({
-      where: {
-        userId_weekStart: {
-          userId,
-          weekStart
-        }
-      },
-      create: {
-        userId,
-        weekStart,
-        excludedIngredients: ingredients
-      },
-      update: {
-        // Merge new ingredients with existing ones (avoid duplicates)
+    // Find or create shared meal plan
+    const mealPlan = await findOrCreateMealPlan(prisma, weekStart, userId);
+
+    // Merge new ingredients with existing ones
+    await prisma.mealPlan.update({
+      where: { id: mealPlan.id },
+      data: {
         excludedIngredients: {
           push: ingredients
         }
       }
     });
 
+    // Re-fetch to get updated data
+    const updated = (await prisma.mealPlan.findUnique({
+      where: { id: mealPlan.id }
+    }))!;
+
     // Get unique ingredients
-    const uniqueIngredients = [...new Set(mealPlan.excludedIngredients)];
-    
+    const uniqueIngredients = [...new Set(updated.excludedIngredients)];
+
     // Update with unique ingredients if there were duplicates
-    if (uniqueIngredients.length !== mealPlan.excludedIngredients.length) {
+    if (uniqueIngredients.length !== updated.excludedIngredients.length) {
       await prisma.mealPlan.update({
         where: { id: mealPlan.id },
         data: { excludedIngredients: uniqueIngredients }
       });
     }
 
-    res.json({ 
+    res.json({
       excludedIngredients: uniqueIngredients,
       message: `${ingredients.length} Zutaten ausgeschlossen`
     });
@@ -407,11 +378,10 @@ router.post('/:weekStart/excluded-ingredients', authenticateToken, async (req: A
   }
 });
 
-// Remove ingredient from excluded list (restore)
+// Remove ingredient from excluded list (restore) (shared across all users)
 router.delete('/:weekStart/excluded-ingredients/:ingredientName', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const prisma = req.app.locals.prisma as PrismaClient;
-    const userId = req.user!.id;
     const weekStartParam = req.params.weekStart as string;
     const ingredientNameParam = req.params.ingredientName as string;
     const ingredientName = decodeURIComponent(ingredientNameParam).toLowerCase();
@@ -423,14 +393,9 @@ router.delete('/:weekStart/excluded-ingredients/:ingredientName', authenticateTo
       return res.status(400).json({ error: 'Ungültiges Datum' });
     }
 
-    // Find existing meal plan
-    const mealPlan = await prisma.mealPlan.findUnique({
-      where: {
-        userId_weekStart: {
-          userId,
-          weekStart
-        }
-      }
+    // Find existing meal plan (shared - no userId filter)
+    const mealPlan = await prisma.mealPlan.findFirst({
+      where: { weekStart }
     });
 
     if (!mealPlan) {
@@ -457,11 +422,10 @@ router.delete('/:weekStart/excluded-ingredients/:ingredientName', authenticateTo
   }
 });
 
-// Reset all excluded ingredients for a week
+// Reset all excluded ingredients for a week (shared across all users)
 router.delete('/:weekStart/excluded-ingredients', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const prisma = req.app.locals.prisma as PrismaClient;
-    const userId = req.user!.id;
     const weekStartParam = req.params.weekStart as string;
 
     // Parse and normalize the week start date
@@ -472,10 +436,7 @@ router.delete('/:weekStart/excluded-ingredients', authenticateToken, async (req:
     }
 
     await prisma.mealPlan.updateMany({
-      where: {
-        userId,
-        weekStart
-      },
+      where: { weekStart },
       data: {
         excludedIngredients: []
       }
@@ -488,11 +449,10 @@ router.delete('/:weekStart/excluded-ingredients', authenticateToken, async (req:
   }
 });
 
-// Delete entire meal plan for a week
+// Delete entire meal plan for a week (shared across all users)
 router.delete('/:weekStart', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const prisma = req.app.locals.prisma as PrismaClient;
-    const userId = req.user!.id;
     const weekStartParam = req.params.weekStart as string;
 
     // Parse and normalize the week start date
@@ -503,10 +463,7 @@ router.delete('/:weekStart', authenticateToken, async (req: AuthRequest, res: Re
     }
 
     await prisma.mealPlan.deleteMany({
-      where: {
-        userId,
-        weekStart
-      }
+      where: { weekStart }
     });
 
     res.json({ message: 'Wochenplan gelöscht' });
