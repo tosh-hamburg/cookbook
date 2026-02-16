@@ -28,11 +28,19 @@ import { useTranslation } from '@/app/i18n';
 
 type View = 'list' | 'detail' | 'create' | 'edit' | 'admin' | 'planner';
 
+// Views that make sense to restore after reload
+const RESTORABLE_VIEWS: View[] = ['list', 'detail', 'admin', 'planner'];
+
+function getSavedView(): View {
+  const saved = sessionStorage.getItem('currentView') as View | null;
+  return saved && RESTORABLE_VIEWS.includes(saved) ? saved : 'list';
+}
+
 export default function App() {
   const { t, language, setLanguage } = useTranslation();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
-  const [currentView, setCurrentView] = useState<View>('list');
+  const [currentView, setCurrentView] = useState<View>(getSavedView);
   const [previousView, setPreviousView] = useState<View>('list');
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -43,6 +51,36 @@ export default function App() {
   const [plannerWeekStart, setPlannerWeekStart] = useState<Date>(() => getCurrentWeekStart());
   const [excludedIngredients, setExcludedIngredients] = useState<Set<string>>(new Set());
   const [sentIngredients, setSentIngredients] = useState<Set<string>>(new Set());
+
+  // Persist current view and selected recipe ID to sessionStorage
+  useEffect(() => {
+    sessionStorage.setItem('currentView', currentView);
+  }, [currentView]);
+
+  useEffect(() => {
+    if (selectedRecipe) {
+      sessionStorage.setItem('selectedRecipeId', selectedRecipe.id);
+    } else {
+      sessionStorage.removeItem('selectedRecipeId');
+    }
+  }, [selectedRecipe]);
+
+  // Restore selected recipe after recipes are loaded
+  useEffect(() => {
+    if (recipes.length > 0 && currentView === 'detail' && !selectedRecipe) {
+      const savedId = sessionStorage.getItem('selectedRecipeId');
+      if (savedId) {
+        const found = recipes.find(r => r.id === savedId);
+        if (found) {
+          setSelectedRecipe(found);
+        } else {
+          setCurrentView('list');
+        }
+      } else {
+        setCurrentView('list');
+      }
+    }
+  }, [recipes, currentView, selectedRecipe]);
 
   // Initialisiere Auth und lade Benutzer
   useEffect(() => {
@@ -105,6 +143,8 @@ export default function App() {
 
   const handleLogout = () => {
     logout();
+    sessionStorage.removeItem('currentView');
+    sessionStorage.removeItem('selectedRecipeId');
     setCurrentUser(null);
     setRecipes([]);
     setCurrentView('list');
@@ -398,7 +438,7 @@ export default function App() {
 
       {/* Main Content */}
       <main className="p-6">
-        {isLoading && currentView === 'list' ? (
+        {isLoading && (currentView === 'list' || (currentView === 'detail' && !selectedRecipe)) ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
