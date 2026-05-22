@@ -434,6 +434,18 @@ ${ingredientsList}`;
         </CardContent>
       </Card>
 
+      {/* Notizen */}
+      {recipe.notes && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Notizen</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="whitespace-pre-line">{recipe.notes}</p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Lösch-Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>

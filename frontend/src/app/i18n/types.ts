@@ -93,6 +93,7 @@ export interface Translations {
     serving: string;
     originalRecipeFor: string;
     instructions: string;
+    notes: string;
     deleteConfirmTitle: string;
     deleteConfirmDescription: string;
     promptCopied: string;
@@ -131,6 +132,8 @@ export interface Translations {
     addIngredient: string;
     instructions: string;
     instructionsPlaceholder: string;
+    notes: string;
+    notesPlaceholder: string;
     fileTooLarge: string;
     fileLoadError: string;
   };

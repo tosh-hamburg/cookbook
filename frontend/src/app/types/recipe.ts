@@ -26,4 +26,5 @@ export interface Recipe {
   userId?: string; // Benutzer, der das Rezept erstellt hat
   createdAt: string;
   sourceUrl?: string; // URL der Quelle, wenn importiert
+  notes?: string | null;
 }

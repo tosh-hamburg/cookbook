@@ -26,6 +26,7 @@ export function RecipeForm({ recipe, userId, onSave, onCancel }: RecipeFormProps
     recipe?.ingredients || [{ name: '', amount: '' }]
   );
   const [instructions, setInstructions] = useState(recipe?.instructions || '');
+  const [notes, setNotes] = useState(recipe?.notes || '');
   const [prepTime, setPrepTime] = useState(recipe?.prepTime?.toString() || '0');
   const [restTime, setRestTime] = useState(recipe?.restTime?.toString() || '0');
   const [cookTime, setCookTime] = useState(recipe?.cookTime?.toString() || '0');
@@ -125,6 +126,7 @@ export function RecipeForm({ recipe, userId, onSave, onCancel }: RecipeFormProps
       userId: recipe?.userId || userId,
       createdAt: recipe?.createdAt || new Date().toISOString(),
       sourceUrl: recipe?.sourceUrl,
+      notes: notes.trim() ? notes : null,
     };
 
     onSave(newRecipe);
@@ -391,6 +393,21 @@ export function RecipeForm({ recipe, userId, onSave, onCancel }: RecipeFormProps
             placeholder={t.recipeForm.instructionsPlaceholder}
             rows={10}
             required
+          />
+        </CardContent>
+      </Card>
+
+      {/* Notizen */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t.recipeForm.notes}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder={t.recipeForm.notesPlaceholder}
+            rows={4}
           />
         </CardContent>
       </Card>

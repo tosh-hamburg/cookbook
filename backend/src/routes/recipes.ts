@@ -87,6 +87,7 @@ function transformRecipe(recipe: any) {
     caloriesPerUnit: recipe.caloriesPerUnit,
     weightUnit: recipe.weightUnit,
     sourceUrl: recipe.sourceUrl,
+    notes: recipe.notes,
     categories: recipe.categories.map((rc: { category: { name: string } }) => rc.category.name),
     collections: recipe.collections?.map((rc: { collection: { id: string; name: string } }) => ({
       id: rc.collection.id,
@@ -275,7 +276,8 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
       caloriesPerUnit,
       weightUnit,
       categories = [],
-      sourceUrl
+      sourceUrl,
+      notes
     } = req.body;
 
     if (!title || !instructions) {
@@ -311,6 +313,7 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
         caloriesPerUnit: caloriesPerUnit || 0,
         weightUnit: weightUnit || '',
         sourceUrl: sourceUrl || null,
+        notes: notes || null,
         userId: req.user!.id,
         ingredients: {
           create: ingredientArray.map((i) => ({
@@ -352,7 +355,8 @@ router.put('/:id', authenticateToken, async (req: AuthRequest, res: Response) =>
       caloriesPerUnit,
       weightUnit,
       categories,
-      sourceUrl
+      sourceUrl,
+      notes
     } = req.body;
 
     // Debug logging for images
@@ -413,6 +417,7 @@ router.put('/:id', authenticateToken, async (req: AuthRequest, res: Response) =>
         caloriesPerUnit,
         weightUnit,
         sourceUrl,
+        notes,
         ingredients: ingredientArray ? {
           create: ingredientArray.map((i) => ({
             name: i.name,
