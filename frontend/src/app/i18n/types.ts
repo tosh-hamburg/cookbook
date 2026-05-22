@@ -329,4 +329,19 @@ export interface Translations {
     noResults: string;
     servings: string;
   };
+
+  // Zeit.de Session-Cookie (Rezept-Import hinter Paywall)
+  zeitCookie: {
+    title: string;
+    description: string;
+    connected: string;
+    notConnected: string;
+    inputLabel: string;
+    inputHint: string;
+    clearButton: string;
+    saved: string;
+    saveError: string;
+    cleared: string;
+    clearError: string;
+  };
 }

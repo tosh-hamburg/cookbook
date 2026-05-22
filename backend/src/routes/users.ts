@@ -2,8 +2,20 @@ import { Router, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { PrismaClient } from '@prisma/client';
 import { AuthRequest, authenticateToken, requireAdmin } from '../middleware/auth';
+import { encrypt } from '../lib/crypto';
 
 const router = Router();
+
+// Akzeptiert entweder den reinen Cookie-Header-String oder eine Sammlung aller Cookies;
+// extrahiert aus beidem die für Zeit-SSO relevanten Cookies (Präfix "zeit_sso_").
+function extractZeitSsoCookies(raw: string): string {
+  const pairs = raw
+    .split(/;\s*/)
+    .map(s => s.trim())
+    .filter(Boolean);
+  const kept = pairs.filter(p => p.toLowerCase().startsWith('zeit_sso_'));
+  return kept.join('; ');
+}
 
 // Helper to get string param
 function getStringParam(params: Record<string, unknown>, key: string): string {
@@ -13,6 +25,91 @@ function getStringParam(params: Record<string, unknown>, key: string): string {
   }
   return value;
 }
+
+// =============================================================================
+// Zeit.de Session-Cookie (per-user, self-service)
+// Dient dem Import von Rezepten hinter der Zeit-Paywall.
+// Der Cookie wird AES-256-GCM verschlüsselt gespeichert und nie an den Client
+// zurückgegeben — das Frontend sieht nur isSet + setAt.
+// WICHTIG: Diese Routen müssen VOR den `/:id`-Routen registriert werden,
+// sonst matcht Express "me" als :id-Parameter.
+// =============================================================================
+
+router.get('/me/zeit-cookie', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const prisma: PrismaClient = req.app.locals.prisma;
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: { zeitSessionCookie: true, zeitSessionCookieSetAt: true },
+    });
+
+    res.json({
+      isSet: !!user?.zeitSessionCookie,
+      setAt: user?.zeitSessionCookieSetAt?.toISOString() ?? null,
+    });
+  } catch (error) {
+    console.error('Get zeit-cookie error:', error);
+    res.status(500).json({ error: 'Fehler beim Abrufen des Zeit-Cookies' });
+  }
+});
+
+router.put('/me/zeit-cookie', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const prisma: PrismaClient = req.app.locals.prisma;
+    const { cookie } = req.body;
+
+    if (typeof cookie !== 'string') {
+      return res.status(400).json({ error: 'Cookie muss ein String sein' });
+    }
+
+    const trimmed = cookie.trim();
+    if (trimmed.length === 0) {
+      return res.status(400).json({ error: 'Cookie darf nicht leer sein' });
+    }
+    if (trimmed.length > 8192) {
+      return res.status(400).json({ error: 'Cookie ist zu lang (max. 8192 Zeichen)' });
+    }
+
+    const zeitCookie = extractZeitSsoCookies(trimmed);
+    if (zeitCookie.length === 0) {
+      return res.status(400).json({
+        error: 'Keine Zeit-SSO-Cookies gefunden. Erwartet werden Cookies mit Präfix "zeit_sso_".',
+      });
+    }
+
+    const encrypted = encrypt(zeitCookie);
+
+    await prisma.user.update({
+      where: { id: req.user!.id },
+      data: {
+        zeitSessionCookie: encrypted,
+        zeitSessionCookieSetAt: new Date(),
+      },
+    });
+
+    res.json({ isSet: true, setAt: new Date().toISOString() });
+  } catch (error) {
+    console.error('Update zeit-cookie error:', error);
+    res.status(500).json({ error: 'Fehler beim Speichern des Zeit-Cookies' });
+  }
+});
+
+router.delete('/me/zeit-cookie', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const prisma: PrismaClient = req.app.locals.prisma;
+    await prisma.user.update({
+      where: { id: req.user!.id },
+      data: {
+        zeitSessionCookie: null,
+        zeitSessionCookieSetAt: null,
+      },
+    });
+    res.json({ isSet: false, setAt: null });
+  } catch (error) {
+    console.error('Delete zeit-cookie error:', error);
+    res.status(500).json({ error: 'Fehler beim Löschen des Zeit-Cookies' });
+  }
+});
 
 // Get all users (admin only)
 router.get('/', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {

@@ -1,7 +1,85 @@
 import { Router, Response } from 'express';
+import { PrismaClient } from '@prisma/client';
 import { AuthRequest, authenticateToken } from '../middleware/auth';
+import { decrypt } from '../lib/crypto';
 
 const router = Router();
+
+async function getZeitCookieForUser(prisma: PrismaClient, userId: string): Promise<string | null> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { zeitSessionCookie: true },
+  });
+  if (!user?.zeitSessionCookie) return null;
+  try {
+    return decrypt(user.zeitSessionCookie);
+  } catch (err) {
+    console.error('Zeit-Cookie konnte nicht entschlüsselt werden:', err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
+// Zeit-spezifisch: Zubereitungsschritte aus dem Artikel-HTML extrahieren.
+// Zeit liefert im Recipe-JSON-LD KEINE recipeInstructions, nur recipeIngredient.
+// Die Zubereitung steht als <p class="paragraph article__item"> nach einer
+// <h2 class="article__subheading article__subheading--recipe ...">.
+// Wichtig: In den Rezept-Block schieben sich Newsletter-, Topicbox-,
+// Werbe- und Figur-Elemente ein. Die müssen ENTFERNT werden, bevor wir
+// nach dem Stopper suchen — sonst bricht ihre eingebettete <h2> die Extraktion
+// mitten im Rezept ab (Bug: fehlende letzte Schritte).
+function parseZeitInstructions(html: string): string {
+  const headingRe = /<h2\b[^>]*class="[^"]*article__subheading--recipe[^"]*"[^>]*>[^<]*<\/h2>/i;
+  const headingMatch = html.match(headingRe);
+  if (!headingMatch || typeof headingMatch.index !== 'number') return '';
+
+  const afterHeading = html.slice(headingMatch.index + headingMatch[0].length);
+
+  // Irrelevante Blöcke (die eigene h2/h1/p/ingredient-Strukturen enthalten können) wegschneiden.
+  const cleaned = afterHeading
+    .replace(/<aside\b[\s\S]*?<\/aside>/gi, '')
+    .replace(/<figure\b[\s\S]*?<\/figure>/gi, '')
+    .replace(/<script\b[\s\S]*?<\/script>/gi, '')
+    .replace(/<noscript\b[\s\S]*?<\/noscript>/gi, '')
+    .replace(/<template\b[\s\S]*?<\/template>/gi, '')
+    .replace(/<form\b[\s\S]*?<\/form>/gi, '')
+    .replace(/<div\s+class="iqdcontainer[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '');
+
+  // Block bis zum nächsten Struktur-Heading, Ingredient-Liste, Kommentar oder Footer.
+  const stopRe = /(<h[12]\b|<div\s+class="ingredient-dice"\b|<div\s+class="recipe-list-collection"\b|<section\b[^>]*comment|<footer\b)/i;
+  const stopMatch = cleaned.match(stopRe);
+  const block = stopMatch && typeof stopMatch.index === 'number'
+    ? cleaned.slice(0, stopMatch.index)
+    : cleaned;
+
+  const paragraphRe = /<p\b[^>]*class="[^"]*paragraph\s+article__item[^"]*"[^>]*>([\s\S]*?)<\/p>/gi;
+  const steps: string[] = [];
+  let stepNumber = 1;
+  let m: RegExpExecArray | null;
+
+  while ((m = paragraphRe.exec(block)) !== null) {
+    const text = m[1]
+      .replace(/<br\s*\/?>/gi, ' ')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (text.length > 0) {
+      steps.push(`${stepNumber}. ${text}`);
+      stepNumber++;
+    }
+  }
+
+  return steps.join('\n\n');
+}
+
+function isZeitHost(hostname: string): boolean {
+  return hostname === 'zeit.de' || hostname.endsWith('.zeit.de');
+}
 
 // Download image and convert to Base64
 async function downloadImageAsBase64(imageUrl: string): Promise<string | null> {
@@ -129,25 +207,48 @@ function cleanTitle(title: string): string {
   return title.replace(/\s+von\s+\S+$/i, '').trim();
 }
 
+// Rekursiv alle Recipe-Objekte aus einem JSON-LD-Schema einsammeln.
+// Unterstützt: Top-Level, @graph, ItemList.itemListElement[].item, mainEntity, hasPart.
+// Zeit.de verschachtelt Recipes in ItemList > itemListElement > item.
+// Rückgabetyp any[] passt zum Rest des JSON-LD-Parsings (unbekanntes Fremdschema).
+function collectRecipes(node: any, acc: any[] = []): any[] {
+  if (!node || typeof node !== 'object') return acc;
+
+  if (node['@type'] === 'Recipe') acc.push(node);
+
+  if (Array.isArray(node['@graph'])) {
+    for (const item of node['@graph']) collectRecipes(item, acc);
+  }
+  if (Array.isArray(node.itemListElement)) {
+    for (const item of node.itemListElement) {
+      if (item && typeof item === 'object') {
+        if (item['@type'] === 'Recipe') acc.push(item);
+        if (item.item) collectRecipes(item.item, acc);
+      }
+    }
+  }
+  if (node.mainEntity) collectRecipes(node.mainEntity, acc);
+  if (node.hasPart) collectRecipes(node.hasPart, acc);
+  return acc;
+}
+
 // Parse JSON-LD Recipe schema from HTML
 function parseJsonLd(html: string): Partial<ScrapedRecipe> | null {
   const jsonLdMatches = html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
-  
+
   // Collect all parsed recipes to find the most complete one
   const allParsedRecipes: Partial<ScrapedRecipe>[] = [];
-  
+
   for (const match of jsonLdMatches) {
     try {
       const data = JSON.parse(match[1]);
-      
+
       // Handle array of schemas
       const schemas = Array.isArray(data) ? data : [data];
-      
+
       for (const schema of schemas) {
-        // Check for Recipe type (can be nested in @graph)
-        const recipes = schema['@graph'] 
-          ? schema['@graph'].filter((item: any) => item['@type'] === 'Recipe')
-          : (schema['@type'] === 'Recipe' ? [schema] : []);
+        // Sammle Recipes aus allen bekannten Verschachtelungen
+        const recipes = collectRecipes(schema);
         
         for (const recipe of recipes) {
           const ingredients: Array<{ name: string; amount: string }> = [];
@@ -473,19 +574,41 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
     }
     
     console.log('Fetching page from:', parsedUrl.hostname);
-    
+
+    // Optional: Zeit.de Session-Cookie des Users mitschicken, um Paywall zu umgehen
+    const prisma: PrismaClient = req.app.locals.prisma;
+    let zeitCookie: string | null = null;
+    if (isZeitHost(parsedUrl.hostname)) {
+      zeitCookie = await getZeitCookieForUser(prisma, req.user!.id);
+      if (zeitCookie) {
+        // Logge nur Cookie-Namen und Wert-Längen (Werte sind sensitiv).
+        const cookieInfo = zeitCookie.split(/;\s*/).map(p => {
+          const eq = p.indexOf('=');
+          return eq > 0 ? `${p.slice(0, eq)}(len=${p.length - eq - 1})` : `${p}(no-value)`;
+        });
+        console.log('Zeit cookie attached:', cookieInfo.join(', '));
+      } else {
+        console.log('Zeit cookie NOT attached (none stored or decryption failed)');
+      }
+    }
+
     // Fetch the page with timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-    
+
+    const requestHeaders: Record<string, string> = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
+    };
+    if (zeitCookie) {
+      requestHeaders['Cookie'] = zeitCookie;
+    }
+
     let response;
     try {
       response = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
-        },
+        headers: requestHeaders,
         signal: controller.signal,
       });
     } catch (fetchError) {
@@ -506,7 +629,7 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
     
     const html = await response.text();
     console.log('Page fetched, HTML length:', html.length);
-    
+
     // Try JSON-LD first
     let recipe = parseJsonLd(html);
     console.log('JSON-LD parsing result:', recipe ? `Found recipe: ${recipe.title}` : 'No JSON-LD found');
@@ -538,6 +661,27 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
       }
     }
     
+    // For Zeit: JSON-LD liefert keine recipeInstructions – diese aus HTML extrahieren.
+    // Außerdem: Wenn die Seite als Paywall-truncated markiert ist, liefern wir eine klare Fehlermeldung.
+    if (isZeitHost(parsedUrl.hostname)) {
+      const isTruncated =
+        /<html[^>]*\sdata-is-truncated-by-paywall\b/i.test(html) ||
+        /"paywall"\s*:\s*"hard"/i.test(html);
+      if (isTruncated) {
+        const msg = zeitCookie
+          ? 'Zeit-Session ist abgelaufen oder ungültig. Bitte Cookie in den Einstellungen erneuern.'
+          : 'Dieses Rezept ist hinter der Zeit-Paywall. Bitte hinterlege dein Zeit-Session-Cookie in den Einstellungen.';
+        return res.status(403).json({ error: msg });
+      }
+
+      if (recipe && (!recipe.instructions || recipe.instructions.trim().length === 0)) {
+        const instructions = parseZeitInstructions(html);
+        if (instructions) {
+          recipe = { ...recipe, instructions };
+        }
+      }
+    }
+
     // For Kochbar: Always try to get additional data from HTML
     if (parsedUrl.hostname.includes('kochbar')) {
       const htmlData = parseKochbarHtml(html);
@@ -568,6 +712,24 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
     }
     
     if (!recipe || !recipe.title) {
+      if (isZeitHost(parsedUrl.hostname)) {
+        // Zusatzdiagnose für zeit.de: Fehlendes Recipe-JSON-LD deutet auf
+        // nicht-autorisierten Zugriff hin — auch ohne sichtbares Paywall-Attribut.
+        const hasRecipeHint = /"@type"\s*:\s*"Recipe"/.test(html);
+        const looksTruncated = /\sdata-is-truncated-by-paywall\b/i.test(html)
+          || /"paywall"\s*:\s*"hard"/i.test(html)
+          || /window\.Zeit\.user\.paywall\s*=\s*"(paid|hard)"/i.test(html);
+        console.log('Zeit import failed:', {
+          cookieSent: !!zeitCookie,
+          htmlLength: html.length,
+          hasRecipeJsonLd: hasRecipeHint,
+          looksTruncated,
+        });
+        const msg = zeitCookie
+          ? 'Rezept nicht lesbar. Dein Zeit-Session-Cookie scheint abgelaufen oder für dieses Rezept nicht gültig. Bitte erneuere ihn in den Einstellungen.'
+          : 'Dieses Rezept ist hinter der Zeit-Paywall. Bitte hinterlege dein Zeit-Session-Cookie in den Einstellungen (Profil → Sicherheit → Zeit-Abo verbinden).';
+        return res.status(403).json({ error: msg });
+      }
       return res.status(400).json({ error: 'Konnte kein Rezept auf dieser Seite finden' });
     }
     

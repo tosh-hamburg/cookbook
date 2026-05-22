@@ -5,6 +5,7 @@ import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { PrismaClient } from '@prisma/client';
 
+import { assertEncryptionKey } from './lib/crypto';
 import authRoutes from './routes/auth';
 import recipesRoutes from './routes/recipes';
 import categoriesRoutes from './routes/categories';
@@ -229,6 +230,15 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 
 async function main() {
   try {
+    // Fail fast if ENCRYPTION_KEY is missing or invalid — used for Zeit-Cookie-Verschlüsselung u. a.
+    try {
+      assertEncryptionKey();
+      console.log('🔐 ENCRYPTION_KEY geladen');
+    } catch (keyErr) {
+      console.error('❌', keyErr instanceof Error ? keyErr.message : keyErr);
+      process.exit(1);
+    }
+
     await prisma.$connect();
     console.log('✅ Datenbankverbindung hergestellt');
 

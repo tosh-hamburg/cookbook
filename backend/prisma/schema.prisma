@@ -21,7 +21,11 @@ model User {
   // 2FA
   twoFactorEnabled Boolean @default(false)
   twoFactorSecret  String?
-  
+
+  // Zeit.de Session-Cookie (AES-256-GCM verschlüsselt) für Rezept-Import hinter Paywall
+  zeitSessionCookie        String?
+  zeitSessionCookieSetAt   DateTime?
+
   createdAt     DateTime @default(now())
   recipes       Recipe[]
   mealPlans     MealPlan[]

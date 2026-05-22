@@ -6,6 +6,7 @@ import { CollectionManager } from '@/app/components/CollectionManager';
 import { UserManager } from '@/app/components/UserManager';
 import { TwoFactorSetup } from '@/app/components/TwoFactorSetup';
 import { ChangePassword } from '@/app/components/ChangePassword';
+import { ZeitCookieSettings } from '@/app/components/ZeitCookieSettings';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Textarea } from '@/app/components/ui/textarea';
@@ -203,10 +204,13 @@ export function AdminPanel({ currentUser, onClose, onUserUpdate, onSettingsUpdat
             <ChangePassword hasPassword={currentUser.hasPassword !== false} />
 
             {/* 2FA Setup */}
-            <TwoFactorSetup 
+            <TwoFactorSetup
               isEnabled={twoFactorEnabled}
               onStatusChange={handleTwoFactorChange}
             />
+
+            {/* Zeit.de Session-Cookie für Rezept-Import */}
+            <ZeitCookieSettings />
           </div>
         </TabsContent>
       </Tabs>

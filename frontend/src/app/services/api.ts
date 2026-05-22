@@ -442,6 +442,29 @@ export const settingsApi = {
   },
 };
 
+// Zeit-Cookie API (per-user, self-service)
+export interface ZeitCookieStatus {
+  isSet: boolean;
+  setAt: string | null;
+}
+
+export const zeitCookieApi = {
+  getStatus: async (): Promise<ZeitCookieStatus> => {
+    return fetchApi<ZeitCookieStatus>('/users/me/zeit-cookie');
+  },
+  save: async (cookie: string): Promise<ZeitCookieStatus> => {
+    return fetchApi<ZeitCookieStatus>('/users/me/zeit-cookie', {
+      method: 'PUT',
+      body: JSON.stringify({ cookie }),
+    });
+  },
+  clear: async (): Promise<ZeitCookieStatus> => {
+    return fetchApi<ZeitCookieStatus>('/users/me/zeit-cookie', {
+      method: 'DELETE',
+    });
+  },
+};
+
 // Import API - for importing recipes from external URLs
 export interface ImportedRecipeData {
   title: string;

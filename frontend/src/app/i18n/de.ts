@@ -333,4 +333,20 @@ export const de: Translations = {
     noResults: 'Keine Rezepte gefunden',
     servings: 'Portionen',
   },
+
+  // Zeit.de Session-Cookie
+  zeitCookie: {
+    title: 'Zeit-Abo verbinden',
+    description: 'Importiere Rezepte von zeit.de hinter der Paywall mit deinem Zeit-Session-Cookie.',
+    connected: 'Zeit-Cookie hinterlegt — Import funktioniert. Zuletzt aktualisiert:',
+    notConnected: 'Kein Zeit-Cookie hinterlegt. Rezepte hinter der Paywall können nicht importiert werden.',
+    inputLabel: 'Zeit-Session-Cookies einfügen',
+    inputHint:
+      'So geht\'s: bei zeit.de anmelden → F12 → Application → Cookies → zeit.de → die drei "zeit_sso_*"-Cookies kopieren (Name=Wert; Name=Wert).\nDer Cookie wird AES-256-GCM-verschlüsselt gespeichert und nie an den Browser zurückgegeben.',
+    clearButton: 'Cookie löschen',
+    saved: 'Zeit-Cookie gespeichert',
+    saveError: 'Fehler beim Speichern des Zeit-Cookies',
+    cleared: 'Zeit-Cookie gelöscht',
+    clearError: 'Fehler beim Löschen des Zeit-Cookies',
+  },
 };

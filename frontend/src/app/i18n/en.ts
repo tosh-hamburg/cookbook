@@ -333,4 +333,20 @@ export const en: Translations = {
     noResults: 'No recipes found',
     servings: 'servings',
   },
+
+  // Zeit.de session cookie
+  zeitCookie: {
+    title: 'Connect Zeit Subscription',
+    description: 'Import recipes from zeit.de behind the paywall using your Zeit session cookie.',
+    connected: 'Zeit cookie stored — import is working. Last updated:',
+    notConnected: 'No Zeit cookie stored. Recipes behind the paywall cannot be imported.',
+    inputLabel: 'Paste Zeit session cookies',
+    inputHint:
+      'How to: sign in at zeit.de → F12 → Application → Cookies → zeit.de → copy the three "zeit_sso_*" cookies (name=value; name=value).\nThe cookie is stored AES-256-GCM encrypted and is never returned to the browser.',
+    clearButton: 'Clear cookie',
+    saved: 'Zeit cookie saved',
+    saveError: 'Failed to save Zeit cookie',
+    cleared: 'Zeit cookie cleared',
+    clearError: 'Failed to clear Zeit cookie',
+  },
 };
