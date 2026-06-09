@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { AuthRequest, authenticateToken } from '../middleware/auth';
 import { decrypt } from '../lib/crypto';
+import { randomBytes } from 'crypto';
 
 const router = Router();
 
@@ -79,6 +80,149 @@ function parseZeitInstructions(html: string): string {
 
 function isZeitHost(hostname: string): boolean {
   return hostname === 'zeit.de' || hostname.endsWith('.zeit.de');
+}
+
+// FAZ "Gesünder Kochen" (gesuender-kochen.faz.net) ist eine reine JavaScript-SPA:
+// Das Rezept steckt NICHT im ausgelieferten HTML (jeder Pfad liefert dieselbe leere
+// App-Shell), sondern wird vom declareme-Widget per recipeId aus der HealthMe-API
+// nachgeladen. Es gibt keine eigene Rezept-URL — die ID kommt als Query-Parameter:
+//   https://gesuender-kochen.faz.net/?recipeId=97348
+// Der öffentliche api-key und user-id-Header werden vom Widget der FAZ-Seite genutzt;
+// die Rezepte sind frei zugänglich (keine Paywall, kein Cookie nötig — anders als Zeit).
+const FAZ_HOST = 'gesuender-kochen.faz.net';
+const FAZ_API_BASE = 'https://api.healthmeapp.de/v1';
+const FAZ_API_KEY = '35c17882-6302-429d-a400-3e9c1feffa4f';
+
+function isFazHost(hostname: string): boolean {
+  return hostname === FAZ_HOST;
+}
+
+// HealthMe-Rezept-JSON in das interne ScrapedRecipe-Schema übersetzen.
+// Bilder bleiben als URLs (werden später von downloadImages() zu Base64 geladen).
+function mapFazRecipe(d: any, recipeId: string): Partial<ScrapedRecipe> | null {
+  if (!d || typeof d !== 'object' || !d.title) return null;
+
+  // Zutaten: preparedLabels.product als Name, preparedLabels.quantity als Menge.
+  const ingredients: Array<{ name: string; amount: string }> = [];
+  if (Array.isArray(d.ingredients)) {
+    for (const ing of d.ingredients) {
+      const labels = ing?.preparedLabels || {};
+      const name = String(labels.product || ing?.title || '').trim();
+      const amount = String(labels.quantity || '').trim();
+      if (name) ingredients.push({ name, amount });
+    }
+  }
+
+  // Zubereitungsschritte: instructions[].text, nummeriert.
+  let instructions = '';
+  if (Array.isArray(d.instructions)) {
+    const steps: string[] = [];
+    let n = 1;
+    for (const step of d.instructions) {
+      const text = String(step?.text || '').replace(/\s+/g, ' ').trim();
+      if (text) steps.push(`${n++}. ${text}`);
+    }
+    instructions = steps.join('\n\n');
+  }
+
+  // Zeiten: time.entries = [{ label: "Vorbereitung", value: 45 }, …] in Minuten.
+  const timeEntries: Array<{ label?: string; value?: number }> = Array.isArray(d.time?.entries)
+    ? d.time.entries
+    : [];
+  const findTime = (re: RegExp): number => {
+    const e = timeEntries.find((en) => re.test(String(en?.label || '')));
+    return e ? Number(e.value) || 0 : 0;
+  };
+  const prepTime = findTime(/vorbereit/i);
+  const cookTime = findTime(/zubereit|koch|back|gar/i);
+  const restTime = findTime(/ruhe|rast|warte|zieh|kühl/i);
+  const totalTime = Number(d.time?.total) || prepTime + cookTime + restTime;
+
+  // Bilder: images[].src.
+  const images: string[] = [];
+  if (Array.isArray(d.images)) {
+    for (const img of d.images) {
+      const src = typeof img === 'string' ? img : img?.src;
+      if (src && !images.includes(src)) images.push(src);
+    }
+  }
+  if (images.length === 0 && d.previewImage) images.push(String(d.previewImage));
+
+  // Kategorien: nur "echte" Kategorien/Gerichtsarten (großgeschrieben, z. B.
+  // "Hauptgericht", "Fisch & Meeresfrüchte") plus Herkunftsland. Die kleingeschriebenen
+  // Diät-/Frei-von-Flags ("eifrei", "sojafrei", "ohne Alkohol") werden bewusst ignoriert.
+  const categories: string[] = [];
+  if (Array.isArray(d.tags)) {
+    for (const tag of d.tags) {
+      const t = String(tag || '').trim();
+      if (t && /^[A-ZÄÖÜ]/.test(t) && !categories.includes(t)) categories.push(t);
+    }
+  }
+  if (Array.isArray(d.country)) {
+    for (const c of d.country) {
+      const t = String(c || '').trim();
+      if (t && !categories.includes(t)) categories.push(t);
+    }
+  }
+
+  // Kalorien pro Portion: bevorzugt energyCalPerPortion, sonst aus nutritionalValues.
+  let caloriesPerUnit = Number(d.energyCalPerPortion) || 0;
+  if (!caloriesPerUnit && Array.isArray(d.nutritionalValues)) {
+    const energy = d.nutritionalValues.find((v: any) => v?.field === 'energyCal');
+    if (energy) caloriesPerUnit = Number(energy.perPortion) || 0;
+  }
+
+  return {
+    title: String(d.title).trim(),
+    images,
+    ingredients,
+    instructions,
+    prepTime,
+    cookTime,
+    restTime,
+    totalTime,
+    servings: Number(d.servings) || 4,
+    caloriesPerUnit,
+    weightUnit: 'Portion',
+    categories,
+  };
+}
+
+// Einzelrezept von der HealthMe-API holen und mappen.
+async function fetchFazRecipe(recipeId: string): Promise<Partial<ScrapedRecipe> | null> {
+  // user-id ist ein Pflicht-Header (sonst auth/missing-required-header). Der Wert ist
+  // beliebig; das Widget erzeugt ihn pro Browser. Wir generieren pro Import einen.
+  const userId = `faz_production_${randomBytes(8).toString('hex')}`;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  try {
+    const response = await fetch(`${FAZ_API_BASE}/recipes/${encodeURIComponent(recipeId)}`, {
+      headers: {
+        'api-key': FAZ_API_KEY,
+        'user-id': userId,
+        Accept: 'application/json',
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        Referer: 'https://gesuender-kochen.faz.net/',
+        Origin: 'https://gesuender-kochen.faz.net',
+      },
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      console.log(`FAZ API returned ${response.status} for recipeId ${recipeId}`);
+      return null;
+    }
+
+    const data = await response.json();
+    return mapFazRecipe(data, recipeId);
+  } catch (error) {
+    console.error('FAZ API fetch error:', error instanceof Error ? error.message : error);
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 // Download image and convert to Base64
@@ -574,6 +718,49 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
     }
     
     console.log('Fetching page from:', parsedUrl.hostname);
+
+    // FAZ "Gesünder Kochen": SPA ohne Rezept-HTML — Rezept per recipeId aus der API holen.
+    // Eigener Pfad, der den generischen HTML-Scrape komplett überspringt.
+    if (isFazHost(parsedUrl.hostname)) {
+      const recipeId = parsedUrl.searchParams.get('recipeId');
+      if (!recipeId || !/^\d+$/.test(recipeId)) {
+        return res.status(400).json({
+          error:
+            'Keine gültige Rezept-ID in der FAZ-URL gefunden. Bitte die vollständige Rezept-URL verwenden (z. B. https://gesuender-kochen.faz.net/?recipeId=97348).',
+        });
+      }
+
+      console.log('FAZ import via HealthMe API, recipeId:', recipeId);
+      const fazRecipe = await fetchFazRecipe(recipeId);
+      if (!fazRecipe || !fazRecipe.title) {
+        return res.status(404).json({
+          error: 'Rezept konnte nicht von der FAZ geladen werden. Bitte prüfe die Rezept-ID.',
+        });
+      }
+
+      // Bilder herunterladen (Base64) und Ergebnis im Standard-Schema zurückgeben.
+      const fazImages = await downloadImages(fazRecipe.images || [], 5);
+      const fazResult: ScrapedRecipe = {
+        title: cleanTitle(fazRecipe.title || '') || 'Importiertes Rezept',
+        images: fazImages,
+        ingredients: fazRecipe.ingredients || [],
+        instructions: fazRecipe.instructions || '',
+        prepTime: fazRecipe.prepTime || 0,
+        restTime: fazRecipe.restTime || 0,
+        cookTime: fazRecipe.cookTime || 0,
+        totalTime:
+          fazRecipe.totalTime ||
+          (fazRecipe.prepTime || 0) + (fazRecipe.cookTime || 0) + (fazRecipe.restTime || 0),
+        servings: fazRecipe.servings || 4,
+        caloriesPerUnit: fazRecipe.caloriesPerUnit || 0,
+        weightUnit: fazRecipe.weightUnit || 'Portion',
+        categories: fazRecipe.categories || [],
+        sourceUrl: url,
+      };
+
+      console.log('FAZ import successful:', fazResult.title, `(${fazResult.ingredients.length} Zutaten)`);
+      return res.json(fazResult);
+    }
 
     // Optional: Zeit.de Session-Cookie des Users mitschicken, um Paywall zu umgehen
     const prisma: PrismaClient = req.app.locals.prisma;

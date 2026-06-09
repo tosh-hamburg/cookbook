@@ -139,7 +139,7 @@ export const en: Translations = {
   // Recipe Import
   recipeImport: {
     title: 'Import Recipe',
-    description: 'Enter the URL of a recipe (e.g. from Chefkoch.de) to import it. The recipe will be automatically extracted from the website.',
+    description: 'Enter the URL of a recipe (e.g. from Chefkoch.de or FAZ Gesünder Kochen: gesuender-kochen.faz.net/?recipeId=…) to import it. The recipe will be automatically extracted.',
     urlLabel: 'Recipe URL',
     urlPlaceholder: 'https://www.chefkoch.de/recipes/...',
     importButton: 'Import',
