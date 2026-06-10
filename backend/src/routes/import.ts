@@ -268,8 +268,14 @@ async function downloadImageAsBase64(imageUrl: string): Promise<string | null> {
     }
     
     const base64 = buffer.toString('base64');
-    const mimeType = contentType.split(';')[0].trim();
-    
+    // Manche Bild-Hosts (z. B. FAZ/declareme) liefern echte JPEGs mit einem generischen
+    // Content-Type wie "application/octet-stream". Würden wir den 1:1 übernehmen, entstünde
+    // "data:application/octet-stream;base64,…" — Browser rendern das per Content-Sniffing,
+    // aber strengere Clients (Android-App, die nur "data:image" als Base64 erkennt) zeigen
+    // dann kein Bild. Darum auf "image/*" normalisieren; die Bytes sind ohnehin ein Bild.
+    const rawMime = contentType.split(';')[0].trim().toLowerCase();
+    const mimeType = rawMime.startsWith('image/') ? rawMime : 'image/jpeg';
+
     return `data:${mimeType};base64,${base64}`;
   } catch (error) {
     console.log(`Error downloading image: ${imageUrl}`, error instanceof Error ? error.message : error);
