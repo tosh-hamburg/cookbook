@@ -99,11 +99,14 @@ function transformRecipe(recipe: any) {
 }
 
 // Transform recipe for list view (with thumbnail, no full images)
+// includeThumbnail=false skips the (CPU-heavy) thumbnail generation for clients
+// that only need the metadata - e.g. the MCP server.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function transformRecipeForList(recipe: any): Promise<{
+async function transformRecipeForList(recipe: any, includeThumbnail = true): Promise<{
   id: string;
   title: string;
   thumbnail: string | null;
+  hasImage: boolean;
   prepTime: number;
   cookTime: number;
   totalTime: number;
@@ -111,9 +114,11 @@ async function transformRecipeForList(recipe: any): Promise<{
   categories: string[];
   createdAt: string;
 }> {
+  const hasImage = Boolean(recipe.images && recipe.images.length > 0);
+
   // Generate thumbnail from first image
   let thumbnail: string | null = null;
-  if (recipe.images && recipe.images.length > 0) {
+  if (hasImage && includeThumbnail) {
     thumbnail = await generateThumbnail(recipe.images[0]);
   }
 
@@ -121,6 +126,7 @@ async function transformRecipeForList(recipe: any): Promise<{
     id: recipe.id,
     title: recipe.title,
     thumbnail,
+    hasImage,
     prepTime: recipe.prepTime,
     cookTime: recipe.cookTime,
     totalTime: recipe.totalTime,
@@ -149,6 +155,10 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
     
     // Check if full recipe data is requested (for web app)
     const fullData = req.query.full === 'true';
+
+    // Thumbnails are Base64 payloads of a few hundred KB each and cost a Sharp
+    // resize per recipe. Clients that do not render them can opt out.
+    const includeThumbnails = req.query.thumbnails !== 'false';
     
     // Parse pagination parameters (only used when not requesting full data)
     const limit = fullData ? undefined : Math.min(Math.max(parseInt(req.query.limit as string) || 20, 1), 100);
@@ -220,7 +230,7 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
     
     // Transform recipes with thumbnails (parallel processing)
     const transformedRecipes = await Promise.all(
-      recipes.map(recipe => transformRecipeForList(recipe))
+      recipes.map(recipe => transformRecipeForList(recipe, includeThumbnails))
     );
 
     // Return paginated response
