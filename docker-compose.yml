@@ -55,7 +55,42 @@ services:
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port ${FRONTEND_PORT:-3002}"
     depends_on:
       - backend
+      # Der Frontend-Container leitet /mcp weiter; ohne den Dienst laeuft die
+      # Website zwar, der MCP-Endpunkt aber nicht.
+      - mcp
+
+  mcp:
+    image: node:22-slim
+    container_name: cookbook-mcp
+    restart: unless-stopped
+    working_dir: /app
+    # Kein ports-Eintrag: Der Endpunkt ist ausschließlich über den
+    # Frontend-Container erreichbar, der /mcp auf diesen Dienst weiterleitet.
+    # Damit liegt er unter cookbook.gout-diary.com/mcp hinter demselben HTTPS.
+    expose:
+      - "${MCP_PORT:-4003}"
+    volumes:
+      - /volume1/nodejs/cookbook/mcp:/app
+      - mcp_node_modules:/app/node_modules
+      - mcp_data:/data
+    depends_on:
+      - backend
+    environment:
+      # Der MCP-Server spricht die Backend-API im Docker-Netz an.
+      COOKBOOK_API_URL: ${MCP_COOKBOOK_API_URL:-http://backend:4002}
+      MCP_TRANSPORT: http
+      MCP_HTTP_HOST: 0.0.0.0
+      MCP_HTTP_PORT: ${MCP_PORT:-4003}
+      # Öffentliche Adresse der Website — daraus baut der Server seine
+      # OAuth-Metadaten und die Rücksprungadressen.
+      MCP_PUBLIC_URL: ${MCP_PUBLIC_URL:-https://cookbook.gout-diary.com}
+      # Dieselbe Client-ID wie die Website; die Anmeldeseite läuft auf derselben Origin.
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      MCP_DATA_DIR: /data
+    command: sh -c "npm install && npm run build && npm start"
 
 volumes:
   backend_node_modules:
   frontend_node_modules:
+  mcp_node_modules:
+  mcp_data:

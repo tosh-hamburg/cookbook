@@ -24,6 +24,7 @@ Cookbook is a self-hosted web application for managing cooking recipes. Import r
 - 🛡️ **2FA** – Optional two-factor authentication
 - 📱 **Responsive Design** – Optimized for desktop, tablet, and smartphone
 - 📲 **Android App** – Native Android app as mobile frontend (see [Android App](#-android-app))
+- 🤖 **MCP Server** – Create and edit recipes straight from a Claude conversation, signing in with Google (see [MCP Server](#-mcp-server))
 
 ## 🖼️ Screenshots
 
@@ -119,6 +120,10 @@ NODE_ENV=production
 FRONTEND_PORT=3002
 BACKEND_PORT=4002
 POSTGRES_PORT=5435
+MCP_PORT=4003
+
+# MCP server (public base URL of this site, no path)
+MCP_PUBLIC_URL=https://cookbook.gout-diary.com
 
 # Google OAuth (optional)
 GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
@@ -131,6 +136,41 @@ GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 3. Add your domain to "Authorized JavaScript origins"
 4. Enter the Client ID in `.env`
 5. Create `frontend/.env` with `VITE_GOOGLE_CLIENT_ID=...`
+
+## 🤖 MCP Server
+
+The `mcp/` package exposes the cookbook as an [MCP](https://modelcontextprotocol.io)
+server, so recipes can be created, edited, searched, and imported from a Claude
+conversation ("add a lentil soup for 4 people", "import this recipe URL",
+"double the resting time on the sourdough").
+
+It is reachable at **`https://cookbook.gout-diary.com/mcp`** — the same domain as
+the web app, no separate subdomain. You sign in with **your Google account**,
+exactly like on the website: Claude opens a sign-in page, you confirm which app
+gets access, and every tool call then runs under your own cookbook user with your
+own permissions. No shared service account and no API token to configure.
+
+**Run it** (already part of `docker-compose.yml`):
+
+```env
+MCP_PORT=4003
+MCP_PUBLIC_URL=https://cookbook.gout-diary.com
+GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
+```
+
+```bash
+docker-compose up -d mcp frontend
+curl https://cookbook.gout-diary.com/.well-known/oauth-protected-resource/mcp
+```
+
+**Connect Claude Code** — no token, the browser handles the login:
+
+```bash
+claude mcp add --scope user --transport http cookbook https://cookbook.gout-diary.com/mcp
+```
+
+Running it locally over stdio instead, the available tools, and the security
+notes are documented in [mcp/README.md](mcp/README.md).
 
 ## 🏗️ Architecture
 
@@ -161,6 +201,15 @@ cookbook/
 │   │   └── schema.prisma    # Database schema
 │   └── package.json
 │
+├── mcp/               # MCP server (Claude integration)
+│   ├── src/
+│   │   ├── api/             # REST client for the cookbook API
+│   │   ├── oauth/           # OAuth server, Google sign-in page, session store
+│   │   ├── tools/           # MCP tools (recipes, catalog, import)
+│   │   ├── transport/       # stdio and streamable HTTP
+│   │   └── index.ts
+│   └── package.json
+│
 ├── docker-compose.yml
 └── .env
 ```
@@ -172,6 +221,7 @@ cookbook/
 | Frontend | React 18, Vite, TypeScript, Tailwind CSS, shadcn/ui |
 | Backend | Node.js, Express, TypeScript, Prisma ORM, Sharp (image processing) |
 | Database | PostgreSQL 16 |
+| MCP Server | Node.js, @modelcontextprotocol/sdk, Zod, Express, OAuth 2.1 + PKCE |
 | Auth | JWT, bcrypt, Google OAuth 2.0, TOTP (2FA) |
 | Container | Docker, Docker Compose |
 | Mobile | Kotlin, Jetpack, Retrofit, Material Design 3 |

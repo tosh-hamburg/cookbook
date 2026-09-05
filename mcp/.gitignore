@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+.env
+*.tsbuildinfo
+
+# OAuth-Speicher (Sitzungen und Kochbuch-JWTs) - darf NIE eingecheckt werden
+.data/

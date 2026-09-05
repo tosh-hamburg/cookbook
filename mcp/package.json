@@ -1,0 +1,37 @@
+{
+  "name": "cookbook-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MCP-Server für die Kochbuch-Anwendung — Rezepte aus Claude heraus anlegen und ändern",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "cookbook-mcp": "dist/index.js"
+  },
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.10.0",
+    "@vitest/coverage-v8": "^5.0.0",
+    "tsx": "^4.23.13",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.0"
+  }
+}
