@@ -85,7 +85,9 @@ Das hat zwei handfeste Vorteile:
   Google-Client-ID ist dafür bereits freigegeben — in der Google Cloud Console
   ist **nichts** zu ändern.
 * Kein zusätzliches Zertifikat und keine neue Reverse-Proxy-Regel auf der
-  Synology nötig. Der Frontend-Container leitet `/mcp` intern weiter.
+  Synology nötig. Der Frontend-Container leitet `/mcp` intern weiter — im
+  Betrieb über `frontend/nginx.conf`, beim lokalen `npm run dev` über die
+  gleichlautenden Regeln in `frontend/vite.config.ts`.
 
 Die SDK-Funktion `mcpAuthRouter` hängt ihre Endpunkte fest an den Domain-Root
 (`/authorize`, `/token`, …) und würde dort mit den Routen der Web-App
@@ -227,7 +229,8 @@ Anmeldeseite testen, alles Weitere deckt die Testsuite ab.
   `frame-ancestors 'none'`; das Ticket in der URL verlässt die Seite dank
   `Referrer-Policy: no-referrer` nicht.
 * Der Container veröffentlicht keinen Port nach außen. Erreichbar ist er nur
-  über den Frontend-Container und damit über dasselbe HTTPS wie die Website.
+  über den Frontend-Container (nginx) und damit über dasselbe HTTPS wie die
+  Website.
 * `/mcp` ist auf 120 Anfragen pro Minute und IP begrenzt; die OAuth-Endpunkte
   bringen eigene Grenzen aus der SDK mit.
 * `import_recipe_from_url` lässt nur öffentliche http(s)-Adressen durch

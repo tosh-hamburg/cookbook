@@ -20,7 +20,7 @@ ssh adm_ssh@synology
 
 | Service | Port |
 |---------|------|
-| Frontend (Vite Dev Server) | 3002 |
+| Frontend (nginx, liefert den Build aus) | 3002 |
 | Backend (Express API) | 4002 |
 | MCP-Server (Streamable HTTP, nur intern) | 4003 |
 | PostgreSQL | 5435 |
@@ -57,6 +57,9 @@ docker-compose logs -f mcp
 docker-compose restart backend
 docker-compose restart frontend
 
+# Frontend nach Codeaenderungen neu bauen (nginx liefert nur statische Dateien)
+docker-compose up -d --force-recreate frontend-build frontend
+
 # Datenbank-Migration ausführen
 docker-compose exec backend npx prisma migrate dev
 
@@ -75,13 +78,19 @@ docker-compose exec db psql -U cookbook -d cookbook
 - Express.js mit TypeScript
 - Prisma ORM für Datenbankzugriff
 - JWT-basierte Authentifizierung
-- Hot-Reload mit nodemon
+- Im Betrieb kompiliert: `npm run build` + `npm start` (kein ts-node/nodemon)
+- Lokal `npm run dev` mit Hot-Reload
 
 ### Frontend
 - React 18 mit TypeScript
 - Vite als Build-Tool
 - TailwindCSS für Styling
-- Hot-Reload mit Vite Dev Server
+- Im Betrieb: `frontend-build` erzeugt einmalig `frontend/dist`, danach liefert
+  nginx den Build aus und verteilt `/api`, `/mcp` und die
+  `/.well-known/oauth-*`-Dokumente an die jeweiligen Container
+  (`frontend/nginx.conf`)
+- Lokal weiterhin `npm run dev` mit Hot-Reload; die Proxy-Regeln dafür stehen
+  in `frontend/vite.config.ts` und müssen zu `nginx.conf` passen
 
 ### MCP-Server
 - Node.js mit TypeScript, `@modelcontextprotocol/sdk`

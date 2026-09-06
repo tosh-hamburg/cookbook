@@ -16,6 +16,10 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  // Note: this dev server is only used for local development
+  // (`npm run dev`). In production the build output is served by nginx, and
+  // the proxy rules below are mirrored in frontend/nginx.conf - keep both in
+  // sync when adding a route.
   server: {
     port: 3002,
     host: true, // Listen on all addresses

@@ -176,7 +176,8 @@ notes are documented in [mcp/README.md](mcp/README.md).
 
 ```
 cookbook/
-├── frontend/          # React + Vite + TypeScript
+├── frontend/          # React + Vite + TypeScript (built, served by nginx)
+│   ├── nginx.conf           # Production serving + /api and /mcp routing
 │   ├── src/
 │   │   ├── app/
 │   │   │   ├── components/   # UI components
@@ -219,6 +220,7 @@ cookbook/
 | Component | Technology |
 |-----------|------------|
 | Frontend | React 18, Vite, TypeScript, Tailwind CSS, shadcn/ui |
+| Serving | nginx (static build + reverse proxy to backend and MCP server) |
 | Backend | Node.js, Express, TypeScript, Prisma ORM, Sharp (image processing) |
 | Database | PostgreSQL 16 |
 | MCP Server | Node.js, @modelcontextprotocol/sdk, Zod, Express, OAuth 2.1 + PKCE |

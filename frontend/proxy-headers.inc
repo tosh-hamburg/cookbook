@@ -1,0 +1,16 @@
+# Gemeinsame Kopfzeilen aller Weiterleitungen.
+# Als eigene Datei, damit sie nicht in jedem location-Block wiederholt werden.
+
+proxy_http_version 1.1;
+proxy_set_header Host              $host;
+proxy_set_header X-Real-IP         $remote_addr;
+proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+proxy_set_header X-Forwarded-Proto $forwarded_proto;
+proxy_set_header X-Forwarded-Host  $host;
+proxy_set_header Upgrade           $http_upgrade;
+proxy_set_header Connection        "";
+
+# Rezept-Importe laden fremde Seiten und Bilder nach; das dauert.
+proxy_connect_timeout 10s;
+proxy_send_timeout    120s;
+proxy_read_timeout    120s;
