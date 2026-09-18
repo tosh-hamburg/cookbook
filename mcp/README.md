@@ -12,7 +12,7 @@ Löschen darf nur der Eigentümer eines Rezepts oder ein Admin.
 
 | Werkzeug | Zweck |
 |----------|-------|
-| `list_recipes` | Rezepte suchen/filtern (Titel, Kategorie, Sammlung), seitenweise |
+| `list_recipes` | Rezepte suchen/filtern (Volltext, Kategorie, Sammlung), seitenweise |
 | `get_recipe` | Ein Rezept mit allen Angaben lesen |
 | `create_recipe` | Neues Rezept anlegen |
 | `update_recipe` | Bestehendes Rezept ändern (nur die angegebenen Felder) |

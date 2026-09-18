@@ -45,6 +45,9 @@ model Recipe {
   weightUnit      String
   sourceUrl       String?            // URL der Quelle, wenn importiert
   notes           String?            @db.Text
+  // Volltextsuche: per Trigger gepflegt (siehe Migration add_recipe_fulltext_search),
+  // wird von Prisma nie geschrieben.
+  searchVector    Unsupported("tsvector")?
   createdAt       DateTime           @default(now())
   userId          String
   user            User               @relation(fields: [userId], references: [id])
@@ -52,6 +55,8 @@ model Recipe {
   categories      RecipeCategory[]
   collections     RecipeCollection[]
   mealSlots       MealSlot[]         // Verwendung in Wochenplänen
+
+  @@index([searchVector], type: Gin)
 }
 
 model Ingredient {

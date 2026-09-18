@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { AuthRequest, authenticateToken } from '../middleware/auth';
 import sharp from 'sharp';
+import { MAX_SEARCH_LENGTH, findRecipeIdsByFullText, normalizeSearchTerm } from '../lib/recipe-search';
 
 const router = Router();
 
@@ -201,12 +202,16 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
       };
     }
     
-    // Search in title
-    if (search && typeof search === 'string') {
-      where.title = {
-        contains: search,
-        mode: 'insensitive'
-      };
+    // Full-text search over title, categories, ingredients, notes and
+    // instructions (PostgreSQL tsvector, see lib/recipe-search.ts).
+    // Results keep the createdAt ordering below; relevance ordering is
+    // available via GET /recipes/search.
+    const searchTerm = normalizeSearchTerm(search);
+    if (searchTerm === null) {
+      return res.status(400).json({ error: `Suchbegriff darf höchstens ${MAX_SEARCH_LENGTH} Zeichen lang sein` });
+    }
+    if (searchTerm) {
+      where.id = { in: await findRecipeIdsByFullText(prisma, searchTerm) };
     }
 
     // Get recipes (with or without pagination)
@@ -244,6 +249,25 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Get recipes error:', error);
     res.status(500).json({ error: 'Fehler beim Abrufen der Rezepte' });
+  }
+});
+
+// Full-text search returning only recipe IDs, best matches first.
+// Lets clients that already hold the recipe list (web app) filter and rank
+// it without reloading full recipes including images.
+router.get('/search', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const prisma: PrismaClient = req.app.locals.prisma;
+    const term = normalizeSearchTerm(req.query.q);
+    if (!term) {
+      return res.status(400).json({ error: `Suchbegriff (q) muss 1 bis ${MAX_SEARCH_LENGTH} Zeichen lang sein` });
+    }
+
+    const ids = await findRecipeIdsByFullText(prisma, term);
+    res.json({ ids });
+  } catch (error) {
+    console.error('Search recipes error:', error);
+    res.status(500).json({ error: 'Fehler bei der Rezeptsuche' });
   }
 });
 

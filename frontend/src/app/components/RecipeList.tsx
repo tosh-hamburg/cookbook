@@ -15,6 +15,7 @@ import {
 } from '@/app/components/ui/select';
 import { categoriesApi, collectionsApi, type Collection } from '@/app/services/api';
 import { useTranslation } from '@/app/i18n';
+import { useRecipeSearch } from '@/app/hooks/useRecipeSearch';
 
 interface RecipeListProps {
   recipes: Recipe[];
@@ -47,12 +48,10 @@ export function RecipeList({ recipes, onSelectRecipe, onCreateNew, onImport }: R
     loadFilters();
   }, []);
 
-  const filteredRecipes = recipes.filter(recipe => {
-    // Text search
-    const matchesSearch = !searchQuery || 
-      recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      recipe.ingredients.some(ing => ing.name.toLowerCase().includes(searchQuery.toLowerCase()));
-    
+  // Text search (client-side match plus server full-text search)
+  const searchedRecipes = useRecipeSearch(recipes, searchQuery);
+
+  const filteredRecipes = searchedRecipes.filter(recipe => {
     // Category filter
     const matchesCategory = !selectedCategory || 
       recipe.categories.includes(selectedCategory);
@@ -61,7 +60,7 @@ export function RecipeList({ recipes, onSelectRecipe, onCreateNew, onImport }: R
     const matchesCollection = selectedCollections.size === 0 ||
       recipe.collections?.some(col => selectedCollections.has(col.id));
     
-    return matchesSearch && matchesCategory && matchesCollection;
+    return matchesCategory && matchesCollection;
   });
 
   const clearFilters = () => {

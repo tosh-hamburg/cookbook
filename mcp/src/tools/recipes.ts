@@ -15,11 +15,11 @@ export function registerRecipeTools(server: McpServer, resolveClient: ClientReso
     {
       title: 'Rezepte auflisten',
       description:
-        'Listet Rezepte des Kochbuchs, optional gefiltert nach Suchbegriff im Titel, Kategorie oder Sammlung. ' +
+        'Listet Rezepte des Kochbuchs, optional gefiltert nach Suchbegriff (Volltext über Titel, Zutaten, Kategorien, Notizen und Anleitung), Kategorie oder Sammlung. ' +
         'Liefert eine kompakte Übersicht ohne Bilddaten. Für die vollständigen Angaben eines Rezepts ' +
         'anschließend get_recipe mit der zurückgegebenen id aufrufen.',
       inputSchema: {
-        search: z.string().trim().min(1).max(200).optional().describe('Suchbegriff, wird im Titel gesucht'),
+        search: z.string().trim().min(1).max(200).optional().describe('Suchbegriff; Volltextsuche über Titel, Zutaten, Kategorien, Notizen und Anleitung. Mehrere Wörter müssen alle vorkommen, Wortanfänge genügen ("Toma" findet Tomaten).'),
         category: z.string().trim().min(1).optional().describe('Exakter Kategoriename, z. B. "Hauptgericht"'),
         collectionIds: z
           .array(z.string().trim().min(1))

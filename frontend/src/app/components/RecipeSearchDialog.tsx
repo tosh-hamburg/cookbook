@@ -20,6 +20,7 @@ import {
 } from '@/app/components/ui/select';
 import { ScrollArea } from '@/app/components/ui/scroll-area';
 import { categoriesApi, collectionsApi, type Collection } from '@/app/services/api';
+import { useRecipeSearch } from '@/app/hooks/useRecipeSearch';
 
 // Number of recipes to show initially and per "load more"
 const INITIAL_DISPLAY_COUNT = 20;
@@ -82,24 +83,22 @@ export function RecipeSearchDialog({
     setDisplayCount(INITIAL_DISPLAY_COUNT);
   }, [searchQuery, selectedCategory, selectedCollections]);
 
+  // Text search (client-side match plus server full-text search)
+  const searchedRecipes = useRecipeSearch(recipes, searchQuery);
+
   const filteredRecipes = useMemo(() => {
-    return recipes.filter(recipe => {
-      // Text search
-      const matchesSearch = !searchQuery || 
-        recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        recipe.ingredients.some(ing => ing.name.toLowerCase().includes(searchQuery.toLowerCase()));
-      
+    return searchedRecipes.filter(recipe => {
       // Category filter
-      const matchesCategory = !selectedCategory || 
+      const matchesCategory = !selectedCategory ||
         recipe.categories.includes(selectedCategory);
-      
+
       // Collection filter - match if recipe is in ANY of the selected collections (OR logic)
       const matchesCollection = selectedCollections.size === 0 ||
         recipe.collections?.some(col => selectedCollections.has(col.id));
-      
-      return matchesSearch && matchesCategory && matchesCollection;
+
+      return matchesCategory && matchesCollection;
     });
-  }, [recipes, searchQuery, selectedCategory, selectedCollections]);
+  }, [searchedRecipes, selectedCategory, selectedCollections]);
 
   // Only display a limited number of recipes for performance
   const displayedRecipes = useMemo(() => {

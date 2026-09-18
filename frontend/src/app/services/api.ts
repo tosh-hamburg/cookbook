@@ -186,6 +186,14 @@ export const recipesApi = {
     return fetchApi<Recipe>(`/recipes/${id}`);
   },
 
+  // Full-text search (title, categories, ingredients, notes, instructions).
+  // Returns only IDs, best matches first; the caller already holds the recipes.
+  search: async (query: string): Promise<string[]> => {
+    const params = new URLSearchParams({ q: query });
+    const result = await fetchApi<{ ids: string[] }>(`/recipes/search?${params.toString()}`);
+    return result.ids;
+  },
+
   create: async (recipe: Omit<Recipe, 'id' | 'createdAt'>): Promise<Recipe> => {
     return fetchApi<Recipe>('/recipes', {
       method: 'POST',

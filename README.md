@@ -328,6 +328,7 @@ The application uses volume mounts and hot-reloading – code changes are applie
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/recipes` | GET | All recipes (with filter & pagination) |
+| `/api/recipes/search?q=…` | GET | Full-text search, returns `{ "ids": [...] }` best matches first |
 | `/api/recipes/:id` | GET | Single recipe |
 | `/api/recipes` | POST | Create recipe |
 | `/api/recipes/:id` | PUT | Edit recipe |
@@ -340,7 +341,7 @@ The application uses volume mounts and hot-reloading – code changes are applie
 |-----------|------|-------------|
 | `category` | string | Filter by category |
 | `collection` | string | Filter by collection ID |
-| `search` | string | Full-text search in title |
+| `search` | string | Full-text search over title, categories, ingredients, notes and instructions (PostgreSQL, German stemming, prefix matching; all words must occur), plus substring match in title and ingredient names ("Suppe" finds "Tomatensuppe") |
 | `full` | boolean | `true` = complete recipe data (Web), `false` = thumbnails + basic info (Mobile) |
 | `limit` | number | Number of recipes per page (only without `full=true`, max. 100) |
 | `offset` | number | Offset for pagination (only without `full=true`) |

@@ -60,8 +60,15 @@ docker-compose restart frontend
 # Frontend nach Codeaenderungen neu bauen (nginx liefert nur statische Dateien)
 docker-compose up -d --force-recreate frontend-build frontend
 
-# Datenbank-Migration ausführen
+# Ausstehende Datenbank-Migrationen einspielen (Produktion; nicht-interaktiv)
+docker-compose exec backend npx prisma migrate deploy
+
+# Neue Migration aus Schema-Aenderungen erzeugen (nur Entwicklung)
 docker-compose exec backend npx prisma migrate dev
+
+# Backend-Tests (Unit-Tests; mit TEST_DATABASE_URL zusaetzlich gegen eine
+# migrierte PostgreSQL-Datenbank, z. B. fuer die Volltextsuche-Trigger)
+cd backend && npm test
 
 # Prisma Studio (Datenbank-GUI)
 docker-compose exec backend npx prisma studio
