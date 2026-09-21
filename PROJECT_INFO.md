@@ -20,9 +20,9 @@ ssh adm_ssh@synology
 
 | Service | Port |
 |---------|------|
-| Frontend (nginx, liefert den Build aus) | 3002 |
-| Backend (Express API) | 4002 |
-| MCP-Server (Streamable HTTP, nur intern) | 4003 |
+| Frontend (nginx im Container `cookbook-app`, liefert den Build aus) | 3002 |
+| Backend (Express API, gleicher Container) | 4002 |
+| MCP-Server (Streamable HTTP, nur containerintern) | 4003 |
 | PostgreSQL | 5435 |
 
 ## Domains
@@ -30,7 +30,7 @@ ssh adm_ssh@synology
 - Lokal: http://synology:3002
 - Test Frontend: https://cookbook.gout-diary.com
 - Test API: https://api.cookbook.gout-diary.com
-- MCP-Endpunkt: https://cookbook.gout-diary.com/mcp (keine eigene Subdomain — der Frontend-Container leitet /mcp weiter)
+- MCP-Endpunkt: https://cookbook.gout-diary.com/mcp (keine eigene Subdomain — nginx im App-Container leitet /mcp weiter)
 
 ## Docker-Befehle
 
@@ -47,37 +47,39 @@ docker-compose down
 # Logs anzeigen (alle)
 docker-compose logs -f
 
-# Logs eines Services anzeigen
-docker-compose logs -f backend
-docker-compose logs -f frontend
+# Logs eines Services anzeigen (app = Backend + MCP-Server + nginx)
+docker-compose logs -f app
 docker-compose logs -f db
-docker-compose logs -f mcp
 
-# Container neu starten
-docker-compose restart backend
-docker-compose restart frontend
+# Nach Codeaenderungen neu bauen und starten: docker/start.sh installiert die
+# Abhaengigkeiten, baut Backend, MCP-Server und Frontend, spielt offene
+# Prisma-Migrationen ein und startet die drei Prozesse (dauert einige Minuten,
+# Fortschritt in den Logs)
+docker-compose up -d --force-recreate app
 
-# Frontend nach Codeaenderungen neu bauen (nginx liefert nur statische Dateien)
-docker-compose up -d --force-recreate frontend-build frontend
-
-# Ausstehende Datenbank-Migrationen einspielen (Produktion; nicht-interaktiv)
-docker-compose exec backend npx prisma migrate deploy
+# Ausstehende Datenbank-Migrationen von Hand einspielen (macht start.sh sonst automatisch)
+docker-compose exec app sh -c "cd backend && npx prisma migrate deploy"
 
 # Neue Migration aus Schema-Aenderungen erzeugen (nur Entwicklung)
-docker-compose exec backend npx prisma migrate dev
+docker-compose exec app sh -c "cd backend && npx prisma migrate dev"
 
 # Backend-Tests (Unit-Tests; mit TEST_DATABASE_URL zusaetzlich gegen eine
 # migrierte PostgreSQL-Datenbank, z. B. fuer die Volltextsuche-Trigger)
 cd backend && npm test
 
 # Prisma Studio (Datenbank-GUI)
-docker-compose exec backend npx prisma studio
+docker-compose exec app sh -c "cd backend && npx prisma studio"
 
 # In Container einloggen
-docker-compose exec backend sh
-docker-compose exec frontend sh
+docker-compose exec app bash
 docker-compose exec db psql -U cookbook -d cookbook
 ```
+
+Der Container `cookbook-app` (Image `node:22-bookworm-slim`) haengt `/volume1/nodejs/cookbook`
+als `/app` ein; die `node_modules` der drei Pakete liegen in Named Volumes. Innerhalb des
+Containers: nginx auf :80 (liefert `frontend/dist` aus, leitet `/api`, `/mcp` und
+`/.well-known/oauth-*` weiter), Backend auf :4002, MCP-Server auf :4003 (nur Loopback).
+Stirbt einer der drei Prozesse, beendet sich der Container und wird neu gestartet.
 
 ## Entwicklung
 
@@ -92,17 +94,23 @@ docker-compose exec db psql -U cookbook -d cookbook
 - React 18 mit TypeScript
 - Vite als Build-Tool
 - TailwindCSS für Styling
-- Im Betrieb: `frontend-build` erzeugt einmalig `frontend/dist`, danach liefert
-  nginx den Build aus und verteilt `/api`, `/mcp` und die
-  `/.well-known/oauth-*`-Dokumente an die jeweiligen Container
+- Im Betrieb baut `docker/start.sh` einmalig `frontend/dist`, danach liefert
+  nginx (im selben Container) den Build aus und verteilt `/api`, `/mcp` und die
+  `/.well-known/oauth-*`-Dokumente an Backend und MCP-Server auf Loopback
   (`frontend/nginx.conf`)
 - Lokal weiterhin `npm run dev` mit Hot-Reload; die Proxy-Regeln dafür stehen
   in `frontend/vite.config.ts` und müssen zu `nginx.conf` passen
+- `npm run typecheck` (tsc, `frontend/tsconfig.json`) vor jedem Commit
+- Design „Küchentisch" (Rezeptbibliothek, Rezeptdetail, Kochmodus, Wochenplaner):
+  Tokens in `src/styles/theme.css`, Vorlage in `design_handoff_rezeptbibliothek_2a/`
+- `node_modules` fuer Frontend und Backend auf der Synology installieren (Linux-Binaries),
+  nicht von Windows aus: `node /volume1/@appstore/Node.js_v22/usr/local/lib/node_modules/npm/bin/npm-cli.js ci`
+  (das `npm` im PATH der Synology ist ein toter Symlink)
 
 ### MCP-Server
 - Node.js mit TypeScript, `@modelcontextprotocol/sdk`
 - Spricht die Backend-REST-API an (kein direkter DB-Zugriff)
-- Zwei Transporte: stdio (lokal) und Streamable HTTP (Container `cookbook-mcp`)
+- Zwei Transporte: stdio (lokal) und Streamable HTTP (im Container `cookbook-app`, Port 4003 nur Loopback)
 - Anmeldung beim HTTP-Transport über OAuth 2.1 + PKCE mit "Mit Google anmelden";
   derselbe Google-Client wie die Website, dadurch keine Änderung in der Google
   Cloud Console nötig
@@ -121,6 +129,12 @@ docker-compose exec db psql -U cookbook -d cookbook
 - `POST /api/recipes` - Rezept erstellen
 - `PUT /api/recipes/:id` - Rezept aktualisieren
 - `DELETE /api/recipes/:id` - Rezept löschen
+- `POST /api/recipes/:id/cooked` - Kochvorgang vermerken (Kochzähler +1, Body optional `{ servings }`)
+- `PUT /api/recipes/:id/favorite` / `DELETE /api/recipes/:id/favorite` - Rezept merken / Markierung entfernen
+
+Alle Rezeptantworten enthalten pro Nutzer `cookCount`, `lastCookedAt` und `isFavorite`
+(Tabellen `CookEvent` und `RecipeFavorite`, Migration `20260921120000_add_favorites_and_cook_events`).
+„Rezept der Woche" in der Web-App ist das Rezept mit dem höchsten Kochzähler.
 
 ### Kategorien
 - `GET /api/categories` - Alle Kategorien abrufen

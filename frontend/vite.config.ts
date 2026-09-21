@@ -17,9 +17,10 @@ export default defineConfig({
     },
   },
   // Note: this dev server is only used for local development
-  // (`npm run dev`). In production the build output is served by nginx, and
-  // the proxy rules below are mirrored in frontend/nginx.conf - keep both in
-  // sync when adding a route.
+  // (`npm run dev`, backend and MCP server running on localhost). In
+  // production the build output is served by nginx inside the app container,
+  // and the proxy rules below are mirrored in frontend/nginx.conf - keep both
+  // in sync when adding a route.
   server: {
     port: 3002,
     host: true, // Listen on all addresses
@@ -29,24 +30,24 @@ export default defineConfig({
     proxy: {
       // Proxy API requests to the backend
       '/api': {
-        target: 'http://cookbook-backend:4002',
+        target: 'http://localhost:4002',
         changeOrigin: true,
       },
       // MCP server (Claude integration). It lives under /mcp on this very
       // domain so its Google sign-in page shares the site's origin - the
       // existing Google client ID needs no extra JavaScript origin.
       '/mcp': {
-        target: 'http://cookbook-mcp:4003',
+        target: 'http://localhost:4003',
         changeOrigin: false,
       },
       // OAuth discovery documents must sit at the domain root (RFC 8414 and
       // RFC 9728), so they are forwarded as well.
       '/.well-known/oauth-authorization-server': {
-        target: 'http://cookbook-mcp:4003',
+        target: 'http://localhost:4003',
         changeOrigin: false,
       },
       '/.well-known/oauth-protected-resource': {
-        target: 'http://cookbook-mcp:4003',
+        target: 'http://localhost:4003',
         changeOrigin: false,
       },
     },
