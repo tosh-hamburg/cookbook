@@ -19,20 +19,31 @@ services:
       timeout: 5s
       retries: 5
 
-  backend:
-    image: node:20-slim
-    container_name: cookbook-backend
+  # Backend, MCP-Server und nginx (Frontend-Auslieferung) in einem Container.
+  # docker/start.sh installiert bei jedem Start die Abhängigkeiten in die
+  # Named Volumes, baut die drei Pakete aus dem eingehängten Quellcode, spielt
+  # offene Prisma-Migrationen ein und startet die Prozesse.
+  app:
+    image: node:22-bookworm-slim
+    container_name: cookbook-app
     restart: unless-stopped
     working_dir: /app
     ports:
+      # nginx: Website inkl. /api, /mcp und OAuth-Metadaten
+      - "${FRONTEND_PORT:-3002}:80"
+      # Backend direkt (api.cookbook.gout-diary.com, Android-App)
       - "${BACKEND_PORT:-4002}:${BACKEND_PORT:-4002}"
     volumes:
-      - /volume1/nodejs/cookbook/backend:/app
-      - backend_node_modules:/app/node_modules
+      - /volume1/nodejs/cookbook:/app
+      - backend_node_modules:/app/backend/node_modules
+      - frontend_node_modules:/app/frontend/node_modules
+      - mcp_node_modules:/app/mcp/node_modules
+      - mcp_data:/data
     depends_on:
       db:
         condition: service_healthy
     environment:
+      # ---- Backend
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       JWT_SECRET: ${JWT_SECRET}
       PORT: ${BACKEND_PORT:-4002}
@@ -40,80 +51,23 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       CORS_ORIGINS: ${CORS_ORIGINS:-https://cookbook.gout-diary.com,http://localhost:3002}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
-    # Produktionsbetrieb: kompiliertes JavaScript statt ts-node/nodemon.
-    # --include=dev ist noetig, weil NODE_ENV=production sonst TypeScript
-    # weglaesst - das aber zum Bauen gebraucht wird.
-    command: >
-      sh -c "apt-get update && apt-get install -y openssl &&
-      npm ci --include=dev &&
-      npx prisma generate &&
-      npm run build &&
-      npm start"
-
-  # Einmaliger Build-Schritt: erzeugt frontend/dist und beendet sich.
-  # Laeuft bei jedem Deploy neu, damit ausgelieferter Stand und Quellcode
-  # zusammenpassen.
-  frontend-build:
-    image: node:20-slim
-    container_name: cookbook-frontend-build
-    restart: "no"
-    working_dir: /app
-    volumes:
-      - /volume1/nodejs/cookbook/frontend:/app
-      - frontend_node_modules:/app/node_modules
-    command: sh -c "npm ci && npm run build"
-
-  # Auslieferung des fertigen Builds. Ersetzt den Vite-Dev-Server und uebernimmt
-  # dessen Weiterleitungen (/api, /mcp, /.well-known/oauth-*) - siehe
-  # frontend/nginx.conf.
-  frontend:
-    image: nginx:1.29-alpine
-    container_name: cookbook-frontend
-    restart: unless-stopped
-    ports:
-      - "${FRONTEND_PORT:-3002}:80"
-    volumes:
-      - /volume1/nodejs/cookbook/frontend/dist:/usr/share/nginx/html:ro
-      - /volume1/nodejs/cookbook/frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - /volume1/nodejs/cookbook/frontend/proxy-headers.inc:/etc/nginx/conf.d/proxy-headers.inc:ro
-    depends_on:
-      frontend-build:
-        condition: service_completed_successfully
-      backend:
-        condition: service_started
-      mcp:
-        condition: service_started
-
-  mcp:
-    image: node:22-slim
-    container_name: cookbook-mcp
-    restart: unless-stopped
-    working_dir: /app
-    # Kein ports-Eintrag: Der Endpunkt ist ausschließlich über den
-    # Frontend-Container erreichbar, der /mcp auf diesen Dienst weiterleitet.
-    # Damit liegt er unter cookbook.gout-diary.com/mcp hinter demselben HTTPS.
-    expose:
-      - "${MCP_PORT:-4003}"
-    volumes:
-      - /volume1/nodejs/cookbook/mcp:/app
-      - mcp_node_modules:/app/node_modules
-      - mcp_data:/data
-    depends_on:
-      - backend
-    environment:
-      # Der MCP-Server spricht die Backend-API im Docker-Netz an.
-      COOKBOOK_API_URL: ${MCP_COOKBOOK_API_URL:-http://backend:4002}
+      # ---- MCP-Server (spricht das Backend im selben Container an)
+      COOKBOOK_API_URL: ${MCP_COOKBOOK_API_URL:-http://127.0.0.1:4002}
       MCP_TRANSPORT: http
-      MCP_HTTP_HOST: 0.0.0.0
+      MCP_HTTP_HOST: 127.0.0.1
       MCP_HTTP_PORT: ${MCP_PORT:-4003}
       # Öffentliche Adresse der Website — daraus baut der Server seine
       # OAuth-Metadaten und die Rücksprungadressen.
       MCP_PUBLIC_URL: ${MCP_PUBLIC_URL:-https://cookbook.gout-diary.com}
-      # Dieselbe Client-ID wie die Website; die Anmeldeseite läuft auf derselben Origin.
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       MCP_DATA_DIR: /data
-    # --include=dev, weil zum Bauen TypeScript gebraucht wird.
-    command: sh -c "npm ci --include=dev && npm run build && npm start"
+    command: bash /app/docker/start.sh
+    healthcheck:
+      # Über nginx bis zum Backend durch; der Build am Start dauert Minuten.
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 600s
 
 volumes:
   backend_node_modules:

@@ -39,6 +39,9 @@ export const saveUser = async (user: Omit<User, 'id' | 'createdAt'> & { id?: str
       });
     } else {
       // Create new user
+      if (!user.password) {
+        throw new Error("Passwort ist erforderlich");
+      }
       return await usersApi.create(user.username, user.password, user.role);
     }
   } catch (error) {
@@ -59,7 +62,7 @@ export const deleteUser = async (userId: string): Promise<void> => {
 export const login = async (username: string, password: string): Promise<User | null> => {
   try {
     const result = await authApi.login(username, password);
-    return result.user;
+    return result.user ?? null;
   } catch (error) {
     console.error('Fehler bei der Anmeldung:', error);
     return null;

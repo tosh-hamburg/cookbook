@@ -1,32 +1,27 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Recipe } from '@/app/types/recipe';
 import type { User } from '@/app/types/user';
+import { AppHeader, type NavTarget } from '@/app/components/AppHeader';
 import { RecipeList } from '@/app/components/RecipeList';
-import { RecipeDetailWithCarousel } from '@/app/components/RecipeDetailWithCarousel';
+import { RecipeDetail } from '@/app/components/RecipeDetail';
 import { RecipeForm } from '@/app/components/RecipeForm';
+import { CookMode } from '@/app/components/CookMode';
 import { Login } from '@/app/components/Login';
 import { AdminPanel } from '@/app/components/AdminPanel';
 import { WeeklyPlanner } from '@/app/components/WeeklyPlanner';
+import { AddToWeekPlannerDialog } from '@/app/components/AddToWeekPlannerDialog';
 import { getCurrentWeekStart } from '@/app/types/mealplan';
 import { loadRecipes, addRecipe, updateRecipe, deleteRecipe } from '@/app/utils/localStorage';
 import { initializeAuth, getCurrentUser, logout } from '@/app/utils/auth';
 import { loadCategories } from '@/app/utils/categories';
+import { useWeekPlan } from '@/app/hooks/useWeekPlan';
 import { Toaster } from '@/app/components/ui/sonner';
-import { Button } from '@/app/components/ui/button';
 import { toast } from 'sonner';
-import { LogOut, Settings, Loader2, CalendarDays, Smartphone, Menu, Languages } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
-} from '@/app/components/ui/dropdown-menu';
-import { settingsApi } from '@/app/services/api';
+import { Loader2 } from 'lucide-react';
+import { recipesApi, settingsApi } from '@/app/services/api';
 import { useTranslation } from '@/app/i18n';
 
-type View = 'list' | 'detail' | 'create' | 'edit' | 'admin' | 'planner';
+type View = 'list' | 'detail' | 'cook' | 'create' | 'edit' | 'admin' | 'planner';
 
 // Views that make sense to restore after reload
 const RESTORABLE_VIEWS: View[] = ['list', 'detail', 'admin', 'planner'];
@@ -36,25 +31,40 @@ function getSavedView(): View {
   return saved && RESTORABLE_VIEWS.includes(saved) ? saved : 'list';
 }
 
+interface CookSession {
+  recipe: Recipe;
+  servings: number;
+}
+
 export default function App() {
-  const { t, language, setLanguage } = useTranslation();
+  const { t } = useTranslation();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [currentView, setCurrentView] = useState<View>(getSavedView);
   const [previousView, setPreviousView] = useState<View>('list');
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
+  const [cookSession, setCookSession] = useState<CookSession | null>(null);
+  const [planRecipe, setPlanRecipe] = useState<Recipe | null>(null);
+  const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   const [geminiPrompt, setGeminiPrompt] = useState<string>('');
-  
+
   // Weekly planner state (persisted across view changes)
   const [plannerWeekStart, setPlannerWeekStart] = useState<Date>(() => getCurrentWeekStart());
   const [excludedIngredients, setExcludedIngredients] = useState<Set<string>>(new Set());
   const [sentIngredients, setSentIngredients] = useState<Set<string>>(new Set());
+  const [shoppingListOpen, setShoppingListOpen] = useState(false);
+
+  // Current week for the band on the library page; a fresh Date object forces a reload
+  const [bandWeekStart, setBandWeekStart] = useState<Date>(() => getCurrentWeekStart());
+  const { weekPlan: bandWeekPlan } = useWeekPlan(bandWeekStart, recipes, { enabled: !!currentUser });
 
   // Persist current view and selected recipe ID to sessionStorage
   useEffect(() => {
-    sessionStorage.setItem('currentView', currentView);
+    if (RESTORABLE_VIEWS.includes(currentView)) {
+      sessionStorage.setItem('currentView', currentView);
+    }
   }, [currentView]);
 
   useEffect(() => {
@@ -69,31 +79,28 @@ export default function App() {
   useEffect(() => {
     if (recipes.length > 0 && currentView === 'detail' && !selectedRecipe) {
       const savedId = sessionStorage.getItem('selectedRecipeId');
-      if (savedId) {
-        const found = recipes.find(r => r.id === savedId);
-        if (found) {
-          setSelectedRecipe(found);
-        } else {
-          setCurrentView('list');
-        }
+      const found = savedId ? recipes.find((r) => r.id === savedId) : undefined;
+      if (found) {
+        setSelectedRecipe(found);
       } else {
         setCurrentView('list');
       }
     }
   }, [recipes, currentView, selectedRecipe]);
 
+  // Keep the selected recipe in sync with the list (favorite, cook counter, edits)
+  useEffect(() => {
+    if (!selectedRecipe) return;
+    const fresh = recipes.find((r) => r.id === selectedRecipe.id);
+    if (fresh && fresh !== selectedRecipe) setSelectedRecipe(fresh);
+  }, [recipes, selectedRecipe]);
+
   // Initialisiere Auth und lade Benutzer
   useEffect(() => {
     const init = async () => {
       try {
         const user = await initializeAuth();
-        if (user) {
-          setCurrentUser(user);
-        } else {
-          // Versuche aus localStorage zu laden (falls Token noch gültig)
-          const storedUser = getCurrentUser();
-          setCurrentUser(storedUser);
-        }
+        setCurrentUser(user ?? getCurrentUser());
       } catch (error) {
         console.error('Auth initialization error:', error);
       } finally {
@@ -107,19 +114,14 @@ export default function App() {
   // Rezepte laden wenn Benutzer angemeldet ist
   const fetchRecipes = useCallback(async () => {
     if (!currentUser) return;
-    
+
     try {
       setIsLoading(true);
-      const loadedRecipes = await loadRecipes();
-      setRecipes(loadedRecipes);
-      // Kategorien auch laden
+      setRecipes(await loadRecipes());
       await loadCategories();
-      // Gemini-Prompt aus Einstellungen laden
       try {
         const settings = await settingsApi.getGeminiPrompt();
-        if (settings.geminiPrompt) {
-          setGeminiPrompt(settings.geminiPrompt);
-        }
+        if (settings.geminiPrompt) setGeminiPrompt(settings.geminiPrompt);
       } catch {
         // Wenn keine Einstellungen vorhanden, Standard-Prompt verwenden
       }
@@ -137,9 +139,10 @@ export default function App() {
     }
   }, [currentUser, isInitialized, fetchRecipes]);
 
-  const handleLogin = (user: User) => {
-    setCurrentUser(user);
-  };
+  const replaceRecipe = (updated: Recipe) =>
+    setRecipes((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+
+  const handleLogin = (user: User) => setCurrentUser(user);
 
   const handleLogout = () => {
     logout();
@@ -149,6 +152,12 @@ export default function App() {
     setRecipes([]);
     setCurrentView('list');
     toast.success(t.app.loggedOutSuccess);
+  };
+
+  const showList = () => {
+    setSelectedRecipe(null);
+    setBandWeekStart(getCurrentWeekStart());
+    setCurrentView('list');
   };
 
   const handleSelectRecipe = (recipe: Recipe, fromView?: View) => {
@@ -162,24 +171,16 @@ export default function App() {
     setCurrentView('create');
   };
 
-  const handleEdit = () => {
-    setCurrentView('edit');
-  };
-
   const handleSaveRecipe = async (recipe: Recipe) => {
     try {
       if (currentView === 'create') {
-        const newRecipe = await addRecipe(recipe);
+        setSelectedRecipe(await addRecipe(recipe));
         toast.success(t.recipes.recipeCreated);
-        setSelectedRecipe(newRecipe);
       } else {
-        const updatedRecipe = await updateRecipe(recipe);
+        setSelectedRecipe(await updateRecipe(recipe));
         toast.success(t.recipes.recipeUpdated);
-        setSelectedRecipe(updatedRecipe);
       }
-      // Rezepte neu laden
-      const loadedRecipes = await loadRecipes();
-      setRecipes(loadedRecipes);
+      setRecipes(await loadRecipes());
       setCurrentView('detail');
     } catch (error) {
       console.error('Error saving recipe:', error);
@@ -188,26 +189,22 @@ export default function App() {
   };
 
   const handleDeleteRecipe = async () => {
-    if (selectedRecipe) {
-      try {
-        await deleteRecipe(selectedRecipe.id);
-        toast.success(t.recipes.recipeDeleted);
-        const loadedRecipes = await loadRecipes();
-        setRecipes(loadedRecipes);
-        setSelectedRecipe(null);
-        setCurrentView('list');
-      } catch (error) {
-        console.error('Error deleting recipe:', error);
-        toast.error(t.recipes.deleteError);
-      }
+    if (!selectedRecipe) return;
+    try {
+      await deleteRecipe(selectedRecipe.id);
+      toast.success(t.recipes.recipeDeleted);
+      setRecipes(await loadRecipes());
+      showList();
+    } catch (error) {
+      console.error('Error deleting recipe:', error);
+      toast.error(t.recipes.deleteError);
     }
   };
 
   const handleImportRecipe = async (recipe: Recipe) => {
     try {
       const newRecipe = await addRecipe(recipe);
-      const loadedRecipes = await loadRecipes();
-      setRecipes(loadedRecipes);
+      setRecipes(await loadRecipes());
       setSelectedRecipe(newRecipe);
       setCurrentView('detail');
       toast.success(t.recipes.importSuccess);
@@ -218,264 +215,160 @@ export default function App() {
   };
 
   const handleBackToList = () => {
-    // Return to the previous view (list or planner)
     if (previousView === 'planner') {
       setCurrentView('planner');
     } else {
-      setSelectedRecipe(null);
-      setCurrentView('list');
+      showList();
     }
   };
 
-  const handleGoToRecipes = () => {
-    setSelectedRecipe(null);
-    setCurrentView('list');
+  // Herz: optimistisch umschalten, bei Fehler zurücknehmen
+  const handleToggleFavorite = async (recipe: Recipe) => {
+    const next = !recipe.isFavorite;
+    replaceRecipe({ ...recipe, isFavorite: next });
+    try {
+      await recipesApi.setFavorite(recipe.id, next);
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      replaceRecipe({ ...recipe, isFavorite: !next });
+      toast.error(t.kitchen.detail.favoriteError);
+    }
   };
 
-  const handleOpenAdmin = () => {
-    setCurrentView('admin');
+  const startCooking = (recipe: Recipe, servings?: number) => {
+    setCookSession({ recipe, servings: servings ?? recipe.servings ?? 1 });
+    setCurrentView('cook');
   };
 
-  const handleCloseAdmin = () => {
-    setCurrentView('list');
+  const exitCooking = () => {
+    setCookSession(null);
+    if (selectedRecipe) setCurrentView('detail');
+    else showList();
   };
 
-  const handleOpenPlanner = () => {
+  // „Fertig" im Kochmodus: Kochzähler +1 (Backend), dann zurück ins Rezept
+  const finishCooking = async (recipe: Recipe, servings: number) => {
+    try {
+      const stats = await recipesApi.recordCooked(recipe.id, servings);
+      replaceRecipe({ ...recipe, ...stats });
+      toast.success(t.kitchen.cook.cookedRecorded);
+    } catch (error) {
+      console.error('Error recording cook event:', error);
+      toast.error(t.kitchen.cook.cookedRecordError);
+    }
+    setCookSession(null);
+    setSelectedRecipe(recipe);
+    setCurrentView('detail');
+  };
+
+  const openPlanner = (withShoppingList = false) => {
     setPreviousView(currentView);
+    setShoppingListOpen(withShoppingList);
     setCurrentView('planner');
   };
 
-  const handleClosePlanner = () => {
-    setCurrentView('list');
+  const handleNavigate = (target: NavTarget) => {
+    if (target === 'recipes') showList();
+    else openPlanner(target === 'shopping');
   };
 
-  // Handle viewing a recipe from the planner
-  const handleViewRecipeFromPlanner = (recipe: Recipe) => {
-    handleSelectRecipe(recipe, 'planner');
+  const handleQueryChange = (value: string) => {
+    setQuery(value);
+    if (currentView !== 'list' && value.trim()) showList();
   };
+
+  const activeNav: NavTarget | null =
+    currentView === 'planner' ? (shoppingListOpen ? 'shopping' : 'planner') : currentView === 'admin' ? null : 'recipes';
 
   // Zeige Loading während der Initialisierung
   if (!isInitialized) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+          <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-tomato" />
           <p className="text-muted-foreground">{t.loading}</p>
         </div>
       </div>
     );
   }
 
-  // Zeige Login, wenn nicht angemeldet
   if (!currentUser) {
     return <Login onLogin={handleLogin} />;
   }
 
   const isAdmin = currentUser.role === 'admin';
 
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Header with background image */}
-      <header 
-        className="relative border-b overflow-hidden"
-        style={{
-          backgroundImage: 'url("https://images.unsplash.com/photo-1495195134817-aeb325a55b65?w=1920&q=80")',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      >
-        {/* Dark overlay for better text readability */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/70" />
-        
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between">
-          <div 
-            className="flex items-center gap-3 sm:gap-4 cursor-pointer hover:opacity-80 transition-opacity"
-            onClick={handleGoToRecipes}
-            title={t.recipes.myRecipes}
-          >
-            <div className="text-3xl sm:text-4xl">📖</div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-white tracking-wide">{t.app.name}</h1>
-              <p className="text-xs sm:text-sm text-white/80 hidden sm:block">
-                {t.app.loggedInAs}: {currentUser.username} ({currentUser.role === 'admin' ? t.app.admin : t.app.user})
-              </p>
-            </div>
-          </div>
-          
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex gap-2">
-            {currentView !== 'planner' && (
-              <Button 
-                variant="outline" 
-                onClick={handleOpenPlanner}
-                className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white"
-              >
-                <CalendarDays className="h-4 w-4 mr-2" />
-                {t.app.weeklyPlanner}
-              </Button>
-            )}
-            <Button 
-              variant="outline" 
-              onClick={() => window.open('/api/app/download', '_blank')}
-              className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white"
-              title={t.app.downloadApp}
-            >
-              <Smartphone className="h-4 w-4 mr-2" />
-              App
-            </Button>
-            
-            {/* Language Switcher Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="outline"
-                  className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white"
-                  title={t.app.language}
-                >
-                  <Languages className="h-4 w-4 mr-2" />
-                  {language.toUpperCase()}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>{t.app.language}</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  onClick={() => setLanguage('de')}
-                  className={language === 'de' ? 'bg-accent' : ''}
-                >
-                  🇩🇪 Deutsch
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => setLanguage('en')}
-                  className={language === 'en' ? 'bg-accent' : ''}
-                >
-                  🇬🇧 English
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            
-            {isAdmin && currentView !== 'admin' && (
-              <Button 
-                variant="outline" 
-                onClick={handleOpenAdmin}
-                className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white"
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                {t.app.administration}
-              </Button>
-            )}
-            <Button 
-              variant="outline" 
-              onClick={handleLogout}
-              className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              {t.app.logout}
-            </Button>
-          </div>
-          
-          {/* Mobile Navigation - Dropdown Menu */}
-          <div className="md:hidden">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="icon"
-                  className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white"
-                >
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                {currentView !== 'planner' && (
-                  <DropdownMenuItem onClick={handleOpenPlanner}>
-                    <CalendarDays className="h-4 w-4 mr-2" />
-                    {t.app.weeklyPlanner}
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem onClick={() => window.open('/api/app/download', '_blank')}>
-                  <Smartphone className="h-4 w-4 mr-2" />
-                  {t.app.downloadApp}
-                </DropdownMenuItem>
-                
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel className="flex items-center">
-                  <Languages className="h-4 w-4 mr-2" />
-                  {t.app.language}
-                </DropdownMenuLabel>
-                <DropdownMenuItem 
-                  onClick={() => setLanguage('de')}
-                  className={language === 'de' ? 'bg-accent' : ''}
-                >
-                  🇩🇪 Deutsch
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => setLanguage('en')}
-                  className={language === 'en' ? 'bg-accent' : ''}
-                >
-                  🇬🇧 English
-                </DropdownMenuItem>
-                
-                {isAdmin && currentView !== 'admin' && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleOpenAdmin}>
-                      <Settings className="h-4 w-4 mr-2" />
-                      {t.app.administration}
-                    </DropdownMenuItem>
-                  </>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  {t.app.logout}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      </header>
+  if (currentView === 'cook' && cookSession) {
+    return (
+      <>
+        <CookMode
+          recipe={cookSession.recipe}
+          servings={cookSession.servings}
+          onExit={exitCooking}
+          onFinish={finishCooking}
+        />
+        <Toaster />
+      </>
+    );
+  }
 
-      {/* Main Content */}
-      <main className="p-6">
+  return (
+    <div className="paper-dots min-h-screen bg-background">
+      <AppHeader
+        user={currentUser}
+        active={activeNav}
+        query={query}
+        onQueryChange={handleQueryChange}
+        onNavigate={handleNavigate}
+        onCreateNew={handleCreateNew}
+        onOpenAdmin={() => setCurrentView('admin')}
+        onLogout={handleLogout}
+      />
+
+      <main className="mx-auto max-w-[1420px] px-10 pb-[60px] pt-[34px] max-[900px]:px-4 max-[900px]:pt-5">
         {isLoading && (currentView === 'list' || (currentView === 'detail' && !selectedRecipe)) ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <Loader2 className="h-8 w-8 animate-spin text-tomato" />
           </div>
         ) : (
           <>
             {currentView === 'list' && (
               <RecipeList
                 recipes={recipes}
+                query={query}
+                weekPlan={bandWeekPlan}
                 onSelectRecipe={handleSelectRecipe}
                 onCreateNew={handleCreateNew}
                 onImport={handleImportRecipe}
+                onCook={(recipe) => startCooking(recipe)}
+                onPlan={setPlanRecipe}
+                onToggleFavorite={handleToggleFavorite}
+                onOpenPlanner={() => openPlanner(false)}
+                onCreateShoppingList={() => openPlanner(true)}
               />
             )}
-            
+
             {currentView === 'detail' && selectedRecipe && (
-              <RecipeDetailWithCarousel
+              <RecipeDetail
                 recipe={selectedRecipe}
                 onClose={handleBackToList}
-                onEdit={handleEdit}
+                onEdit={() => setCurrentView('edit')}
                 onDelete={handleDeleteRecipe}
+                onCook={startCooking}
+                onToggleFavorite={handleToggleFavorite}
                 isAdmin={isAdmin}
-                onRecipeUpdate={(updatedRecipe) => {
-                  setSelectedRecipe(updatedRecipe);
-                  setRecipes(recipes.map(r => r.id === updatedRecipe.id ? updatedRecipe : r));
+                onRecipeUpdate={(updated) => {
+                  setSelectedRecipe(updated);
+                  replaceRecipe(updated);
                 }}
               />
             )}
-            
-            {currentView === 'create' && currentUser && (
-              <RecipeForm
-                userId={currentUser.id}
-                onSave={handleSaveRecipe}
-                onCancel={handleBackToList}
-              />
+
+            {currentView === 'create' && (
+              <RecipeForm userId={currentUser.id} onSave={handleSaveRecipe} onCancel={handleBackToList} />
             )}
-            
-            {currentView === 'edit' && selectedRecipe && currentUser && (
+
+            {currentView === 'edit' && selectedRecipe && (
               <RecipeForm
                 recipe={selectedRecipe}
                 userId={currentUser.id}
@@ -487,14 +380,11 @@ export default function App() {
             {currentView === 'admin' && isAdmin && (
               <AdminPanel
                 currentUser={currentUser}
-                onClose={handleCloseAdmin}
+                onClose={showList}
                 onSettingsUpdate={async () => {
-                  // Reload Gemini prompt when settings change
                   try {
                     const settings = await settingsApi.getGeminiPrompt();
-                    if (settings.geminiPrompt) {
-                      setGeminiPrompt(settings.geminiPrompt);
-                    }
+                    if (settings.geminiPrompt) setGeminiPrompt(settings.geminiPrompt);
                   } catch {
                     // Ignore errors
                   }
@@ -505,8 +395,7 @@ export default function App() {
             {currentView === 'planner' && (
               <WeeklyPlanner
                 recipes={recipes}
-                onClose={handleClosePlanner}
-                onViewRecipe={handleViewRecipeFromPlanner}
+                onViewRecipe={(recipe) => handleSelectRecipe(recipe, 'planner')}
                 geminiPrompt={geminiPrompt}
                 excludedIngredients={excludedIngredients}
                 onExcludedIngredientsChange={setExcludedIngredients}
@@ -514,12 +403,28 @@ export default function App() {
                 onWeekStartChange={setPlannerWeekStart}
                 sentIngredients={sentIngredients}
                 onSentIngredientsChange={setSentIngredients}
+                shoppingListOpen={shoppingListOpen}
+                onShoppingListOpenChange={setShoppingListOpen}
               />
             )}
           </>
         )}
       </main>
-      
+
+      {planRecipe && (
+        <AddToWeekPlannerDialog
+          recipe={planRecipe}
+          open
+          onOpenChange={(open) => {
+            if (!open) setPlanRecipe(null);
+          }}
+          onSuccess={() => {
+            setBandWeekStart(getCurrentWeekStart());
+            toast.success(t.planner.recipeAdded);
+          }}
+        />
+      )}
+
       <Toaster />
     </div>
   );

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ClientResolver } from '../client-resolver.js';
+import { summarizeCollection } from '../recipe.js';
 import { jsonResult, runTool, textResult } from './result.js';
 
 /** Werkzeuge für Kategorien und Sammlungen — der Katalog, in den Rezepte einsortiert werden. */
@@ -23,11 +24,14 @@ export function registerCatalogTools(server: McpServer, resolveClient: ClientRes
     'list_collections',
     {
       title: 'Sammlungen auflisten',
-      description: 'Listet alle Sammlungen (Kochbücher) mit ID, Name und Beschreibung.',
+      description:
+        'Listet alle Sammlungen (Kochbücher) mit ID, Name, Beschreibung und den enthaltenen Rezepten ' +
+        '(nur ID, Titel und ob ein Bild vorhanden ist — keine Bilddaten).',
       inputSchema: {},
       annotations: { readOnlyHint: true, openWorldHint: true },
     },
-    async (_args, extra) => runTool(async () => jsonResult(await resolveClient(extra).listCollections())),
+    async (_args, extra) =>
+      runTool(async () => jsonResult((await resolveClient(extra).listCollections()).map(summarizeCollection))),
   );
 
   server.registerTool(

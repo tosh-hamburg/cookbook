@@ -121,7 +121,7 @@ describe('get_recipe', () => {
     expect(textOf(result)).not.toContain(blob);
     expect(jsonOf(result)).toMatchObject({
       title: 'Linsensuppe',
-      images: [{ kind: 'base64', value: 'image/png' }],
+      images: [{ kind: 'base64', mimeType: 'image/png' }],
     });
   });
 
@@ -347,12 +347,31 @@ describe('Katalog-Werkzeuge', () => {
     expect(JSON.parse(textOf(result))).toEqual([{ id: 'c-1', name: 'Dessert' }]);
   });
 
-  test('list_collections liefert die Sammlungen', async () => {
-    const { client } = await connect(() => ({ body: [{ id: 's-1', name: 'Weihnachten', description: null }] }));
+  test('list_collections liefert die Sammlungen ohne Bilddaten', async () => {
+    const { client } = await connect(() => ({
+      body: [
+        {
+          id: 's-1',
+          name: 'Weihnachten',
+          description: null,
+          recipeCount: 1,
+          recipes: [{ id: 'r-1', title: 'Gans', images: ['data:image/jpeg;base64,AAAA'] }],
+        },
+      ],
+    }));
 
     const result = (await client.callTool({ name: 'list_collections', arguments: {} })) as CallToolResult;
 
-    expect(JSON.parse(textOf(result))).toEqual([{ id: 's-1', name: 'Weihnachten', description: null }]);
+    expect(JSON.parse(textOf(result))).toEqual([
+      {
+        id: 's-1',
+        name: 'Weihnachten',
+        description: null,
+        recipeCount: 1,
+        recipes: [{ id: 'r-1', title: 'Gans', hasImage: true }],
+      },
+    ]);
+    expect(textOf(result)).not.toContain('base64');
   });
 
   test('add_recipe_to_collection ruft den richtigen Endpunkt auf', async () => {

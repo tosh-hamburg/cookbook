@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { AuthRequest, authenticateToken } from '../middleware/auth';
 import sharp from 'sharp';
 import { MAX_SEARCH_LENGTH, findRecipeIdsByFullText, normalizeSearchTerm } from '../lib/recipe-search';
+import { EMPTY_STATS, RecipeStats, loadRecipeStats, statsFor } from '../lib/recipe-stats';
 
 const router = Router();
 
@@ -68,9 +69,10 @@ const recipeInclude = {
   }
 } as const;
 
-// Transform recipe to frontend format (full details)
+// Transform recipe to frontend format (full details).
+// stats = per-user cook counter and favorite flag (see lib/recipe-stats.ts)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function transformRecipe(recipe: any) {
+function transformRecipe(recipe: any, stats: RecipeStats = EMPTY_STATS) {
   return {
     id: recipe.id,
     title: recipe.title,
@@ -95,7 +97,10 @@ function transformRecipe(recipe: any) {
       name: rc.collection.name
     })) || [],
     userId: recipe.userId,
-    createdAt: recipe.createdAt.toISOString()
+    createdAt: recipe.createdAt.toISOString(),
+    cookCount: stats.cookCount,
+    lastCookedAt: stats.lastCookedAt,
+    isFavorite: stats.isFavorite
   };
 }
 
@@ -103,7 +108,11 @@ function transformRecipe(recipe: any) {
 // includeThumbnail=false skips the (CPU-heavy) thumbnail generation for clients
 // that only need the metadata - e.g. the MCP server.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function transformRecipeForList(recipe: any, includeThumbnail = true): Promise<{
+async function transformRecipeForList(
+  recipe: any,
+  includeThumbnail = true,
+  stats: RecipeStats = EMPTY_STATS
+): Promise<{
   id: string;
   title: string;
   thumbnail: string | null;
@@ -114,6 +123,9 @@ async function transformRecipeForList(recipe: any, includeThumbnail = true): Pro
   servings: number;
   categories: string[];
   createdAt: string;
+  cookCount: number;
+  lastCookedAt: string | null;
+  isFavorite: boolean;
 }> {
   const hasImage = Boolean(recipe.images && recipe.images.length > 0);
 
@@ -133,7 +145,10 @@ async function transformRecipeForList(recipe: any, includeThumbnail = true): Pro
     totalTime: recipe.totalTime,
     servings: recipe.servings,
     categories: recipe.categories.map((rc: { category: { name: string } }) => rc.category.name),
-    createdAt: recipe.createdAt.toISOString()
+    createdAt: recipe.createdAt.toISOString(),
+    cookCount: stats.cookCount,
+    lastCookedAt: stats.lastCookedAt,
+    isFavorite: stats.isFavorite
   };
 }
 
@@ -224,18 +239,20 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
       ...(limit !== undefined && { skip: offset, take: limit })
     });
 
+    const stats = await loadRecipeStats(prisma, req.user!.id, recipes.map(recipe => recipe.id));
+
     // If full data requested, return complete recipe objects (for web app)
     if (fullData) {
-      const transformedRecipes = recipes.map(recipe => transformRecipe(recipe));
+      const transformedRecipes = recipes.map(recipe => transformRecipe(recipe, statsFor(stats, recipe.id)));
       return res.json(transformedRecipes);
     }
 
     // Otherwise, return paginated response with thumbnails (for mobile app)
     const total = await prisma.recipe.count({ where });
-    
+
     // Transform recipes with thumbnails (parallel processing)
     const transformedRecipes = await Promise.all(
-      recipes.map(recipe => transformRecipeForList(recipe, includeThumbnails))
+      recipes.map(recipe => transformRecipeForList(recipe, includeThumbnails, statsFor(stats, recipe.id)))
     );
 
     // Return paginated response
@@ -286,7 +303,8 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res: Response) =>
       return res.status(404).json({ error: 'Rezept nicht gefunden' });
     }
 
-    res.json(transformRecipe(recipe));
+    const stats = await loadRecipeStats(prisma, req.user!.id, [id]);
+    res.json(transformRecipe(recipe, statsFor(stats, id)));
   } catch (error) {
     console.error('Get recipe error:', error);
     res.status(500).json({ error: 'Fehler beim Abrufen des Rezepts' });
@@ -470,7 +488,8 @@ router.put('/:id', authenticateToken, async (req: AuthRequest, res: Response) =>
     // Debug logging for saved images
     console.log(`[UPDATE] Recipe ${id}: Saved ${recipe.images?.length || 0} images to database`);
 
-    res.json(transformRecipe(recipe));
+    const stats = await loadRecipeStats(prisma, req.user!.id, [id]);
+    res.json(transformRecipe(recipe, statsFor(stats, id)));
   } catch (error) {
     console.error('Update recipe error:', error);
     res.status(500).json({ error: 'Fehler beim Aktualisieren des Rezepts' });
@@ -502,6 +521,69 @@ router.delete('/:id', authenticateToken, async (req: AuthRequest, res: Response)
   } catch (error) {
     console.error('Delete recipe error:', error);
     res.status(500).json({ error: 'Fehler beim Löschen des Rezepts' });
+  }
+});
+
+// Record that the current user cooked this recipe (called when cook mode
+// finishes). Feeds the cook counter and "recipe of the week".
+router.post('/:id/cooked', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const prisma: PrismaClient = req.app.locals.prisma;
+    const id = getIdParam(req.params);
+    const userId = req.user!.id;
+
+    const rawServings = req.body?.servings;
+    const servings = Number.isInteger(rawServings) && rawServings > 0 && rawServings <= 99 ? rawServings : null;
+
+    const recipe = await prisma.recipe.findUnique({ where: { id }, select: { id: true } });
+    if (!recipe) {
+      return res.status(404).json({ error: 'Rezept nicht gefunden' });
+    }
+
+    await prisma.cookEvent.create({ data: { userId, recipeId: id, servings } });
+    const stats = await loadRecipeStats(prisma, userId, [id]);
+    res.status(201).json(statsFor(stats, id));
+  } catch (error) {
+    console.error('Record cooked error:', error);
+    res.status(500).json({ error: 'Fehler beim Speichern der Kochhistorie' });
+  }
+});
+
+// Mark recipe as favorite for the current user (idempotent)
+router.put('/:id/favorite', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const prisma: PrismaClient = req.app.locals.prisma;
+    const id = getIdParam(req.params);
+    const userId = req.user!.id;
+
+    const recipe = await prisma.recipe.findUnique({ where: { id }, select: { id: true } });
+    if (!recipe) {
+      return res.status(404).json({ error: 'Rezept nicht gefunden' });
+    }
+
+    await prisma.recipeFavorite.upsert({
+      where: { userId_recipeId: { userId, recipeId: id } },
+      update: {},
+      create: { userId, recipeId: id }
+    });
+    res.json({ isFavorite: true });
+  } catch (error) {
+    console.error('Add favorite error:', error);
+    res.status(500).json({ error: 'Fehler beim Merken des Rezepts' });
+  }
+});
+
+// Remove favorite mark (idempotent)
+router.delete('/:id/favorite', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const prisma: PrismaClient = req.app.locals.prisma;
+    const id = getIdParam(req.params);
+
+    await prisma.recipeFavorite.deleteMany({ where: { userId: req.user!.id, recipeId: id } });
+    res.json({ isFavorite: false });
+  } catch (error) {
+    console.error('Remove favorite error:', error);
+    res.status(500).json({ error: 'Fehler beim Entfernen der Markierung' });
   }
 });
 

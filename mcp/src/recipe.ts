@@ -1,4 +1,10 @@
-import type { ApiRecipe, ApiRecipeListItem, ApiScrapedRecipe, RecipeWritePayload } from './api/types.js';
+import type {
+  ApiCollection,
+  ApiRecipe,
+  ApiRecipeListItem,
+  ApiScrapedRecipe,
+  RecipeWritePayload,
+} from './api/types.js';
 import type { CreateRecipeInput, UpdateRecipeInput } from './schemas/recipe.js';
 
 /**
@@ -98,26 +104,23 @@ export function scrapedToCreatePayload(scraped: ApiScrapedRecipe, overrides: Par
   };
 }
 
-export interface ImageDescription {
-  index: number;
-  kind: 'url' | 'base64';
-  /** Bei URLs die URL selbst, bei Base64 der MIME-Typ. */
-  value: string;
-  approxBytes?: number;
-}
+/** Beschreibung eines Rezeptbilds ohne dessen Nutzdaten. */
+export type ImageDescription =
+  | { index: number; kind: 'url'; url: string }
+  | { index: number; kind: 'base64'; mimeType: string; approxBytes: number };
 
 /** Ersetzt Bilddaten durch kurze Beschreibungen, damit keine Base64-Blobs im Kontext landen. */
 export function describeImages(images: readonly string[]): ImageDescription[] {
   return images.map((image, index) => {
     const match = /^data:(image\/[a-z0-9.+-]+);base64,(.*)$/i.exec(image);
     if (!match) {
-      return { index, kind: 'url' as const, value: image.slice(0, 500) };
+      return { index, kind: 'url' as const, url: image.slice(0, 500) };
     }
     // 4 Base64-Zeichen kodieren 3 Bytes.
     return {
       index,
       kind: 'base64' as const,
-      value: match[1],
+      mimeType: match[1],
       approxBytes: Math.floor((match[2].length * 3) / 4),
     };
   });
@@ -127,6 +130,15 @@ export function describeImages(images: readonly string[]): ImageDescription[] {
 export function summarizeRecipe(recipe: ApiRecipe) {
   const { images, ...rest } = recipe;
   return { ...rest, images: describeImages(images) };
+}
+
+/** Kompakte Darstellung einer Sammlung — enthaltene Rezepte nur mit ID, Titel und Bild-Kennzeichen. */
+export function summarizeCollection(collection: ApiCollection) {
+  const { recipes = [], ...rest } = collection;
+  return {
+    ...rest,
+    recipes: recipes.map(({ id, title, images }) => ({ id, title, hasImage: images.length > 0 })),
+  };
 }
 
 /** Kompakte Darstellung eines Listeneintrags — ohne Thumbnail-Daten. */

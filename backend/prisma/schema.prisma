@@ -29,6 +29,8 @@ model User {
   createdAt     DateTime @default(now())
   recipes       Recipe[]
   mealPlans     MealPlan[]
+  favorites     RecipeFavorite[]
+  cookEvents    CookEvent[]
 }
 
 model Recipe {
@@ -55,6 +57,8 @@ model Recipe {
   categories      RecipeCategory[]
   collections     RecipeCollection[]
   mealSlots       MealSlot[]         // Verwendung in Wochenplänen
+  favorites       RecipeFavorite[]
+  cookEvents      CookEvent[]
 
   @@index([searchVector], type: Gin)
 }
@@ -97,6 +101,31 @@ model RecipeCollection {
   collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
 
   @@id([recipeId, collectionId])
+}
+
+// Gemerkte Rezepte (Herz) - pro Nutzer
+model RecipeFavorite {
+  userId    String
+  recipeId  String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@id([userId, recipeId])
+}
+
+// Kochhistorie - ein Eintrag pro abgeschlossenem Kochmodus. Daraus leiten
+// sich Kochzähler und "Rezept der Woche" ab.
+model CookEvent {
+  id       String   @id @default(uuid())
+  userId   String
+  recipeId String
+  servings Int?
+  cookedAt DateTime @default(now())
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe   Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@index([userId, recipeId])
 }
 
 // Wochenplaner

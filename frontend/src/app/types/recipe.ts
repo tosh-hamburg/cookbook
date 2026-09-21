@@ -27,4 +27,8 @@ export interface Recipe {
   createdAt: string;
   sourceUrl?: string; // URL der Quelle, wenn importiert
   notes?: string | null;
+  // Nutzerbezogene Statistik (Backend: RecipeFavorite / CookEvent)
+  cookCount?: number;
+  lastCookedAt?: string | null;
+  isFavorite?: boolean;
 }

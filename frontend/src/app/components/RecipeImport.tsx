@@ -51,8 +51,8 @@ export function RecipeImport({ onImport }: RecipeImportProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">
-          <Download className="h-4 w-4 mr-2" />
+        <Button variant="paper" size="pill-xs">
+          <Download />
           {t.recipes.importRecipe}
         </Button>
       </DialogTrigger>

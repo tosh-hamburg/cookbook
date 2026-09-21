@@ -24,6 +24,8 @@ function getDefaultWeekStart(): Date {
 
 interface AddToWeekPlannerDialogProps {
   recipe: Recipe;
+  /** Portionszahl aus dem Rezeptdetail; ohne Angabe die des Rezepts */
+  servings?: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
@@ -50,7 +52,7 @@ function getWeekNumber(date: Date): number {
   return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
 }
 
-export function AddToWeekPlannerDialog({ recipe, open, onOpenChange, onSuccess }: AddToWeekPlannerDialogProps) {
+export function AddToWeekPlannerDialog({ recipe, servings, open, onOpenChange, onSuccess }: AddToWeekPlannerDialogProps) {
   const { t } = useTranslation();
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(getDefaultWeekStart());
   const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(null);
@@ -176,7 +178,7 @@ export function AddToWeekPlannerDialog({ recipe, open, onOpenChange, onSuccess }
         selectedDayIndex,
         selectedMealType,
         recipe.id,
-        recipe.servings || 2
+        servings || recipe.servings || 2
       );
       
       toast.success(t.planner.recipeAdded || 'Rezept zum Wochenplaner hinzugefügt', {
@@ -239,7 +241,7 @@ export function AddToWeekPlannerDialog({ recipe, open, onOpenChange, onSuccess }
               <div className="font-semibold">
                 {formatWeekRange(currentWeekStart, weekEnd)}
               </div>
-              <div className="text-sm text-muted-foreground">
+              <div className="font-mono text-sm text-muted-foreground">
                 {t.planner.calendarWeek} {getWeekNumber(currentWeekStart)}
               </div>
             </div>
@@ -302,12 +304,12 @@ export function AddToWeekPlannerDialog({ recipe, open, onOpenChange, onSuccess }
                       onClick={() => handleSlotClick(day.index, mealType)}
                       disabled={isOccupied}
                       title={isOccupied && occupiedRecipeTitle ? occupiedRecipeTitle : undefined}
-                      className={`w-full p-2 rounded-lg border-2 transition-all ${
+                      className={`w-full rounded-2xl border-[1.5px] p-2 transition-all ${
                         isOccupied
-                          ? 'border-muted bg-muted/50 cursor-not-allowed opacity-60'
+                          ? 'cursor-not-allowed border-line-soft bg-white opacity-60'
                           : isSelected
-                          ? 'border-primary bg-primary/10 shadow-sm'
-                          : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                          ? 'border-tomato bg-[oklch(0.94_0.045_85)]'
+                          : 'border-dashed border-[oklch(0.85_0.02_80)] hover:border-tomato'
                       }`}
                     >
                       <div className="flex items-center justify-center gap-1 text-xs">

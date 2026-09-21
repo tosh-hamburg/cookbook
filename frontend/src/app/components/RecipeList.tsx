@@ -1,204 +1,172 @@
-import { Plus, Search, Filter, X, FolderOpen } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Plus } from 'lucide-react';
 import type { Recipe } from '@/app/types/recipe';
+import type { WeekPlan } from '@/app/types/mealplan';
 import { RecipeCard } from '@/app/components/RecipeCard';
-import { Button } from '@/app/components/ui/button';
-import { Input } from '@/app/components/ui/input';
+import { RecipeHero } from '@/app/components/library/RecipeHero';
+import { CollectionPills } from '@/app/components/library/CollectionPills';
+import { WeekBand } from '@/app/components/library/WeekBand';
 import { RecipeImport } from '@/app/components/RecipeImport';
-import { Badge } from '@/app/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/app/components/ui/select';
-import { categoriesApi, collectionsApi, type Collection } from '@/app/services/api';
-import { useTranslation } from '@/app/i18n';
+import { Button } from '@/app/components/ui/button';
+import { collectionsApi, type Collection } from '@/app/services/api';
 import { useRecipeSearch } from '@/app/hooks/useRecipeSearch';
+import { pickFeaturedRecipe } from '@/app/utils/recipeMeta';
+import { useTranslation } from '@/app/i18n';
 
 interface RecipeListProps {
   recipes: Recipe[];
+  /** Suchbegriff aus dem Kopfbereich (App-weit) */
+  query: string;
+  weekPlan: WeekPlan;
   onSelectRecipe: (recipe: Recipe) => void;
   onCreateNew: () => void;
   onImport: (recipe: Recipe) => void;
+  onCook: (recipe: Recipe) => void;
+  onPlan: (recipe: Recipe) => void;
+  onToggleFavorite: (recipe: Recipe) => void;
+  onOpenPlanner: () => void;
+  onCreateShoppingList: () => void;
 }
 
-export function RecipeList({ recipes, onSelectRecipe, onCreateNew, onImport }: RecipeListProps) {
+/** Rezeptbibliothek (Handoff 2a): Rezept der Woche, Sammlungsleiste, Raster, Wochenband. */
+export function RecipeList({
+  recipes,
+  query,
+  weekPlan,
+  onSelectRecipe,
+  onCreateNew,
+  onImport,
+  onCook,
+  onPlan,
+  onToggleFavorite,
+  onOpenPlanner,
+  onCreateShoppingList,
+}: RecipeListProps) {
   const { t } = useTranslation();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [selectedCollections, setSelectedCollections] = useState<Set<string>>(new Set());
-  const [categories, setCategories] = useState<string[]>([]);
+  const lib = t.kitchen.library;
   const [collections, setCollections] = useState<Collection[]>([]);
+  const [selectedCollections, setSelectedCollections] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    const loadFilters = async () => {
-      try {
-        const [cats, colls] = await Promise.all([
-          categoriesApi.getAll(),
-          collectionsApi.getAll()
-        ]);
-        setCategories(cats);
-        setCollections(colls);
-      } catch (error) {
-        console.error('Error loading filters:', error);
-      }
-    };
-    loadFilters();
+    collectionsApi
+      .getAll()
+      .then(setCollections)
+      .catch((error) => console.error('Error loading collections:', error));
   }, []);
 
   // Text search (client-side match plus server full-text search)
-  const searchedRecipes = useRecipeSearch(recipes, searchQuery);
+  const searchedRecipes = useRecipeSearch(recipes, query);
 
-  const filteredRecipes = searchedRecipes.filter(recipe => {
-    // Category filter
-    const matchesCategory = !selectedCategory || 
-      recipe.categories.includes(selectedCategory);
-    
-    // Collection filter - match if recipe is in ANY of the selected collections (OR logic)
-    const matchesCollection = selectedCollections.size === 0 ||
-      recipe.collections?.some(col => selectedCollections.has(col.id));
-    
-    return matchesCategory && matchesCollection;
-  });
+  const filteredRecipes = useMemo(
+    () =>
+      searchedRecipes.filter(
+        (recipe) =>
+          selectedCollections.size === 0 ||
+          recipe.collections?.some((col) => selectedCollections.has(col.id)),
+      ),
+    [searchedRecipes, selectedCollections],
+  );
 
-  const clearFilters = () => {
-    setSearchQuery('');
-    setSelectedCategory('');
-    setSelectedCollections(new Set());
-  };
+  const featured = useMemo(() => pickFeaturedRecipe(recipes), [recipes]);
+  const isFiltering = query.trim().length > 0 || selectedCollections.size > 0;
+
+  const nextOpenDay = useMemo(() => {
+    const index = weekPlan.days.findIndex((day) => !day.meals.dinner.recipe);
+    return index === -1 ? null : t.planner.dayNames[index];
+  }, [weekPlan, t]);
 
   const toggleCollection = (collectionId: string) => {
-    setSelectedCollections(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(collectionId)) {
-        newSet.delete(collectionId);
-      } else {
-        newSet.add(collectionId);
-      }
-      return newSet;
+    setSelectedCollections((prev) => {
+      const next = new Set(prev);
+      if (next.has(collectionId)) next.delete(collectionId);
+      else next.add(collectionId);
+      return next;
     });
   };
 
-  const hasActiveFilters = searchQuery || selectedCategory || selectedCollections.size > 0;
+  if (recipes.length === 0) {
+    return (
+      <EmptyState title={lib.empty} hint={lib.emptyHint} onCreateNew={onCreateNew}>
+        <RecipeImport onImport={onImport} />
+      </EmptyState>
+    );
+  }
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <div className="mb-8">
-        <h1 className="mb-4">{t.recipes.myRecipes}</h1>
-        
-        {/* Search and Actions Row */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t.recipes.searchPlaceholder}
-              className="pl-10"
-            />
-          </div>
-          <div className="flex gap-2">
-            <RecipeImport onImport={onImport} />
-            <Button onClick={onCreateNew}>
-              <Plus className="h-4 w-4 mr-2" />
-              {t.recipes.newRecipe}
-            </Button>
-          </div>
-        </div>
+    <div>
+      {featured && !isFiltering && (
+        <RecipeHero
+          recipe={featured}
+          nextOpenDay={nextOpenDay}
+          onCook={onCook}
+          onPlan={onPlan}
+          onOpen={onSelectRecipe}
+        />
+      )}
 
-        {/* Filter Row */}
-        <div className="flex flex-wrap items-center gap-3">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          
-          <Select value={selectedCategory || "all"} onValueChange={(val) => setSelectedCategory(val === "all" ? "" : val)}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder={t.filters.category} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t.filters.allCategories}</SelectItem>
-              {categories.map(cat => (
-                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={clearFilters}>
-              <X className="h-4 w-4 mr-1" />
-              {t.filters.resetFilters}
-            </Button>
-          )}
-        </div>
-
-        {/* Collection Filter Chips */}
+      {/* Block B – Sammlungsleiste */}
+      <div className="flex flex-wrap items-center gap-[14px] border-t border-line pb-5 pt-[22px]">
+        <h2 className="font-display text-[30px] font-normal leading-none">{lib.myCollection}</h2>
+        <span className="text-sm font-medium text-ink-4">
+          <b className="font-mono font-bold tabular-nums text-ink-2">{filteredRecipes.length}</b> {lib.recipesCount}
+        </span>
+        <RecipeImport onImport={onImport} />
+        <span className="flex-1" />
         {collections.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 mt-3">
-            <FolderOpen className="h-4 w-4 text-muted-foreground" />
-            <Badge 
-              variant={selectedCollections.size === 0 ? "default" : "outline"}
-              className="cursor-pointer hover:bg-primary/80 transition-colors"
-              onClick={() => setSelectedCollections(new Set())}
-            >
-              {t.filters.allCollections}
-            </Badge>
-            {collections.map(col => (
-              <Badge 
-                key={col.id}
-                variant={selectedCollections.has(col.id) ? "default" : "outline"}
-                className="cursor-pointer hover:bg-primary/80 transition-colors"
-                onClick={() => toggleCollection(col.id)}
-              >
-                {col.name}
-                {selectedCollections.has(col.id) && (
-                  <X className="h-3 w-3 ml-1" />
-                )}
-              </Badge>
-            ))}
-          </div>
-        )}
-
-        {/* Active Filters Display */}
-        {(selectedCategory) && (
-          <div className="flex flex-wrap gap-2 mt-3">
-            {selectedCategory && (
-              <Badge variant="secondary" className="gap-1">
-                {t.filters.category}: {selectedCategory}
-                <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedCategory('')} />
-              </Badge>
-            )}
-          </div>
+          <CollectionPills
+            collections={collections}
+            selected={selectedCollections}
+            onToggle={toggleCollection}
+            onClear={() => setSelectedCollections(new Set())}
+          />
         )}
       </div>
 
+      {/* Block C – Rezeptraster */}
       {filteredRecipes.length === 0 ? (
-        <div className="text-center py-16">
-          <div className="mb-4 text-muted-foreground">
-            {searchQuery ? (
-              <p>{t.recipes.noRecipesSearch} "{searchQuery}".</p>
-            ) : (
-              <p>{t.recipes.noRecipes}</p>
-            )}
-          </div>
-          {!searchQuery && (
-            <Button onClick={onCreateNew}>
-              <Plus className="h-4 w-4 mr-2" />
-              {t.recipes.createFirst}
-            </Button>
-          )}
-        </div>
+        <EmptyState title={lib.noMatch} hint={lib.noMatchHint} onCreateNew={onCreateNew} />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredRecipes.map((recipe) => (
+        <div className="grid grid-cols-3 gap-[26px] max-[1100px]:grid-cols-2 max-[700px]:grid-cols-1">
+          {filteredRecipes.map((recipe, index) => (
             <RecipeCard
               key={recipe.id}
               recipe={recipe}
+              index={index}
               onClick={() => onSelectRecipe(recipe)}
+              onToggleFavorite={onToggleFavorite}
             />
           ))}
         </div>
       )}
+
+      {/* Block D – Wochenplan-Band */}
+      <WeekBand weekPlan={weekPlan} onOpenPlanner={onOpenPlanner} onCreateShoppingList={onCreateShoppingList} />
+    </div>
+  );
+}
+
+interface EmptyStateProps {
+  title: string;
+  hint: string;
+  onCreateNew: () => void;
+  children?: React.ReactNode;
+}
+
+function EmptyState({ title, hint, onCreateNew, children }: EmptyStateProps) {
+  const { t } = useTranslation();
+  return (
+    <div className="flex flex-col items-center py-20 text-center">
+      <h2 className="font-display text-[30px] font-normal leading-none">{title}</h2>
+      <p className="mt-3 max-w-[440px] text-[15px] leading-[1.6] text-ink-2 [text-wrap:pretty]">{hint}</p>
+      <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+        <Button variant="ink" size="pill" className="pl-[6px] pr-[18px]" onClick={onCreateNew}>
+          <span className="grid size-[30px] place-items-center rounded-full bg-tomato">
+            <Plus className="size-4 text-white" strokeWidth={2.4} />
+          </span>
+          {t.kitchen.nav.createRecipe}
+        </Button>
+        {children}
+      </div>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import {
   mergeRecipe,
   resolveTotalTime,
   scrapedToCreatePayload,
+  summarizeCollection,
   summarizeListItem,
   summarizeRecipe,
   toCreatePayload,
@@ -164,7 +165,7 @@ describe('scrapedToCreatePayload', () => {
 describe('describeImages', () => {
   test('gibt http-URLs unverändert zurück', () => {
     expect(describeImages(['https://example.test/bild.jpg'])).toEqual([
-      { index: 0, kind: 'url', value: 'https://example.test/bild.jpg' },
+      { index: 0, kind: 'url', url: 'https://example.test/bild.jpg' },
     ]);
   });
 
@@ -173,7 +174,7 @@ describe('describeImages', () => {
 
     const [description] = describeImages([`data:image/jpeg;base64,${base64}`]);
 
-    expect(description).toEqual({ index: 0, kind: 'base64', value: 'image/jpeg', approxBytes: 3000 });
+    expect(description).toEqual({ index: 0, kind: 'base64', mimeType: 'image/jpeg', approxBytes: 3000 });
   });
 
   test('gibt niemals die Bilddaten selbst zurück', () => {
@@ -194,7 +195,7 @@ describe('summarizeRecipe', () => {
 
     expect(summary.title).toBe(recipe.title);
     expect(summary.ingredients).toEqual(recipe.ingredients);
-    expect(summary.images).toEqual([{ index: 0, kind: 'base64', value: 'image/jpeg', approxBytes: 1500 }]);
+    expect(summary.images).toEqual([{ index: 0, kind: 'base64', mimeType: 'image/jpeg', approxBytes: 1500 }]);
   });
 });
 
@@ -247,5 +248,33 @@ describe('summarizeListItem', () => {
     });
 
     expect(summary.hasImage).toBe(false);
+  });
+});
+
+describe('summarizeCollection', () => {
+  test('ersetzt die Bilddaten der enthaltenen Rezepte durch ein Kennzeichen', () => {
+    const summary = summarizeCollection({
+      id: 's-1',
+      name: 'Weihnachten',
+      description: null,
+      recipeCount: 2,
+      recipes: [
+        { id: 'r-1', title: 'Gans', images: ['data:image/jpeg;base64,AAAA'] },
+        { id: 'r-2', title: 'Knödel', images: [] },
+      ],
+      createdAt: '2026-01-01T00:00:00.000Z',
+    });
+
+    expect(summary.recipes).toEqual([
+      { id: 'r-1', title: 'Gans', hasImage: true },
+      { id: 'r-2', title: 'Knödel', hasImage: false },
+    ]);
+    expect(JSON.stringify(summary)).not.toContain('base64');
+  });
+
+  test('kommt ohne Rezeptliste des Backends aus', () => {
+    const summary = summarizeCollection({ id: 's-2', name: 'Leer', description: 'Nichts drin' });
+
+    expect(summary).toEqual({ id: 's-2', name: 'Leer', description: 'Nichts drin', recipes: [] });
   });
 });

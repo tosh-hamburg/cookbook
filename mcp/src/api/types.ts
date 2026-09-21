@@ -65,11 +65,19 @@ export interface ApiCategory {
   name: string;
 }
 
+/** Rezept-Kurzeintrag innerhalb einer Sammlung — `images` enthält ggf. Base64-Blobs. */
+export interface ApiCollectionRecipe {
+  id: string;
+  title: string;
+  images: string[];
+}
+
 export interface ApiCollection {
   id: string;
   name: string;
   description: string | null;
   recipeCount?: number;
+  recipes?: ApiCollectionRecipe[];
   createdAt?: string;
 }
 

@@ -197,8 +197,127 @@ export interface Translations {
     noMeals: string;
     noMealsDescription: string;
     alreadySentGemini: string;
+    addToWeekPlanner: string;
+    selectSlotFirst: string;
+    recipeAdded: string;
+    selectSlotDescription: string;
+    adding: string;
+    addRecipe: string;
   };
-  
+
+  // Küchentisch-Redesign (Bibliothek, Detail, Kochmodus, Wochenplaner)
+  kitchen: {
+    nav: {
+      wordmark: string;
+      recipes: string;
+      planner: string;
+      shoppingList: string;
+      searchPlaceholder: string;
+      createRecipe: string;
+      account: string;
+    };
+    library: {
+      featuredKicker: string;
+      featuredAuto: string; // {count}
+      featuredNew: string;
+      cookNow: string;
+      planOnDay: string; // {day}
+      planOnAnyDay: string;
+      cookedTimes: string; // {count}
+      familyFavorite: string;
+      notCookedYet: string;
+      newInCollection: string;
+      myCollection: string;
+      recipesCount: string; // {count}
+      all: string;
+      total: string;
+      servings: string;
+      kcalPerServing: string;
+      minutes: string;
+      servingsShort: string;
+      nutritionOpen: string;
+      noMatch: string;
+      noMatchHint: string;
+      empty: string;
+      emptyHint: string;
+      yourWeek: string;
+      eveningsOpen: string; // {count}
+      allEveningsPlanned: string;
+      stillOpen: string;
+      createShoppingList: string;
+      favorite: string;
+      unfavorite: string;
+    };
+    detail: {
+      backToCollection: string;
+      source: string;
+      saved: string;
+      save: string;
+      cookMode: string;
+      total: string;
+      activeTime: string;
+      kcalPerServing: string;
+      cooked: string;
+      yourNote: string;
+      notePlaceholder: string;
+      noteSaved: string;
+      noteSaveError: string;
+      servingsHint: string;
+      toShoppingList: string;
+      planOnDay: string;
+      checkedCount: string; // {count}
+      step: string;
+      noSteps: string;
+      addToCollection: string;
+      moreImages: string;
+      favoriteError: string;
+    };
+    cook: {
+      stepOf: string; // {current} {total}
+      steps: string;
+      servings: string;
+      screenStaysOn: string;
+      startTimer: string;
+      pauseTimer: string;
+      resetTimer: string;
+      ringsInBackground: string;
+      timerDone: string;
+      back: string;
+      next: string;
+      done: string;
+      exit: string;
+      ingredientsForThisRun: string;
+      cookedRecorded: string;
+      cookedRecordError: string;
+      keyboardHint: string;
+    };
+    plan: {
+      title: string;
+      suggestions: string;
+      suggestionsHint: string;
+      searchRecipes: string;
+      noSuggestions: string;
+      shoppingList: string;
+      positions: string; // {count}
+      fromMeals: string; // {count}
+      openList: string;
+      free: string;
+      chooseRecipe: string;
+      hintPickSlot: string;
+      hintSlotPicked: string;
+      selectSlotToast: string;
+      breakfast: string;
+      lunch: string;
+      dinner: string;
+      remove: string;
+      servingsShort: string;
+      excluded: string;
+      restore: string;
+      emptyList: string;
+      dropHere: string;
+    };
+  };
+
   // Admin Panel
   admin: {
     title: string;
