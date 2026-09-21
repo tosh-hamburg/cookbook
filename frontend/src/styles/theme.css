@@ -1,44 +1,76 @@
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Design-Tokens „Küchentisch" (design_handoff_rezeptbibliothek_2a/README.md).
+ * Die oklch-Werte sind maßgeblich; die shadcn-Variablen darunter werden auf
+ * dieselbe Palette gemappt, damit Formular-, Admin- und Login-Screens zum
+ * neuen Rahmen passen, ohne einzeln umgebaut zu werden.
+ */
 :root {
   --font-size: 16px;
-  --background: #ffffff;
-  --foreground: oklch(0.145 0 0);
-  --card: #ffffff;
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: #030213;
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.95 0.0058 264.53);
-  --secondary-foreground: #030213;
-  --muted: #ececf0;
-  --muted-foreground: #717182;
-  --accent: #e9ebef;
-  --accent-foreground: #030213;
-  --destructive: #d4183d;
+
+  --paper:      oklch(0.968 0.018 85);
+  --paper-edge: #e9e2d6;
+  --card:       #ffffff;
+  --ink:        oklch(0.26 0.04 45);
+  --ink-hover:  oklch(0.2 0.04 45);
+  --ink-2:      oklch(0.42 0.03 45);
+  --ink-3:      oklch(0.48 0.03 45);
+  --ink-4:      oklch(0.56 0.03 50);
+  --line:       oklch(0.86 0.02 80);
+  --line-soft:  oklch(0.93 0.015 80);
+  --tomato:     oklch(0.56 0.17 32);
+  --tomato-str: oklch(0.48 0.17 32);
+  --herb:       oklch(0.52 0.09 145);
+  --sage:       oklch(0.86 0.09 110);
+  --gold:       oklch(0.82 0.12 90);
+  --gold-ink:   oklch(0.24 0.04 60);
+  --dot:        oklch(0.62 0.05 50 / 0.09);
+  --photo-fallback: oklch(0.92 0.02 80);
+
+  /* Kochmodus (dunkel) */
+  --cook-bg:      oklch(0.22 0.035 45);
+  --cook-bg-deep: oklch(0.18 0.03 45);
+  --cook-fg:      oklch(0.94 0.02 80);
+  --cook-line:    oklch(0.3 0.03 50);
+
+  /* shadcn-Variablen auf die Palette gemappt */
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card-foreground: var(--ink);
+  --popover: #ffffff;
+  --popover-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: #ffffff;
+  --secondary: oklch(0.94 0.02 80);
+  --secondary-foreground: var(--ink);
+  --muted: oklch(0.94 0.02 80);
+  --muted-foreground: var(--ink-4);
+  --accent: oklch(0.94 0.02 80);
+  --accent-foreground: var(--ink);
+  --destructive: var(--tomato);
   --destructive-foreground: #ffffff;
-  --border: rgba(0, 0, 0, 0.1);
-  --input: transparent;
-  --input-background: #f3f3f5;
-  --switch-background: #cbced4;
+  --border: var(--line);
+  --input: var(--line);
+  --input-background: #ffffff;
+  --switch-background: oklch(0.8 0.02 80);
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: #030213;
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --ring: var(--tomato);
+  --chart-1: var(--tomato);
+  --chart-2: var(--herb);
+  --chart-3: var(--gold);
+  --chart-4: oklch(0.62 0.10 210);
+  --chart-5: oklch(0.58 0.14 320);
+  --radius: 14px;
+  --sidebar: #ffffff;
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--ink);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: oklch(0.94 0.02 80);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: var(--line);
+  --sidebar-ring: var(--tomato);
 }
 
 .dark {
@@ -79,6 +111,45 @@
 }
 
 @theme inline {
+  /* Küchentisch-Palette als Tailwind-Farben (bg-tomato, text-ink-2, border-line …) */
+  --color-paper: var(--paper);
+  --color-paper-edge: var(--paper-edge);
+  --color-ink: var(--ink);
+  --color-ink-hover: var(--ink-hover);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-tomato: var(--tomato);
+  --color-tomato-str: var(--tomato-str);
+  --color-herb: var(--herb);
+  --color-sage: var(--sage);
+  --color-gold: var(--gold);
+  --color-gold-ink: var(--gold-ink);
+  --color-photo-fallback: var(--photo-fallback);
+  --color-cook-bg: var(--cook-bg);
+  --color-cook-bg-deep: var(--cook-bg-deep);
+  --color-cook-fg: var(--cook-fg);
+  --color-cook-line: var(--cook-line);
+
+  --font-display: 'Instrument Serif', Georgia, serif;
+  --font-sans: 'Figtree', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --shadow-card: 0 14px 34px -24px oklch(0.4 0.05 50 / 0.7);
+  --shadow-card-hover: 0 24px 44px -24px oklch(0.4 0.05 50 / 0.8);
+  --shadow-hero: 0 26px 50px -24px oklch(0.4 0.05 50 / 0.6);
+  --shadow-note: 0 14px 30px -16px oklch(0.4 0.05 50 / 0.6);
+  --shadow-primary: 0 10px 24px -12px oklch(0.56 0.17 32 / 0.8);
+  --shadow-metric: 0 12px 30px -24px oklch(0.4 0.05 50 / 0.7);
+  --shadow-panel: 0 16px 36px -26px oklch(0.4 0.05 50 / 0.8);
+  --shadow-cell: 0 12px 26px -22px oklch(0.4 0.05 50 / 0.8);
+  --shadow-heart: 0 6px 14px -8px oklch(0.4 0.05 50 / 0.8);
+  --shadow-next: 0 14px 30px -16px oklch(0.56 0.17 32);
+
+  --animate-rise: rise 0.5s ease both;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -119,22 +190,29 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
 
-  body {
-    @apply bg-background text-foreground;
-  }
-
-  /**
-  * Default typography styles for HTML elements (h1-h4, p, label, button, input).
-  * These are in @layer base, so Tailwind utility classes (like text-sm, text-lg) automatically override them.
-  */
-
   html {
     font-size: var(--font-size);
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    -webkit-font-smoothing: antialiased;
   }
 
   h1 {
@@ -178,4 +256,19 @@
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
   }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation: none !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@utility paper-dots {
+  /* Punktraster auf dem Papiergrund (README „Rahmen/Layout") */
+  background-image: radial-gradient(var(--dot) 1px, transparent 1px);
+  background-size: 22px 22px;
 }

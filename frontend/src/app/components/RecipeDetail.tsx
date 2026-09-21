@@ -1,11 +1,8 @@
-import { Clock, Flame, Pencil, Trash2, ChevronLeft, ChevronRight, ExternalLink, Users, Minus, Plus, ShoppingCart, Check } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { ArrowLeft, FolderPlus, Heart, Pencil, Play, Trash2, UtensilsCrossed, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { useState, useMemo } from 'react';
 import type { Recipe, Ingredient } from '@/app/types/recipe';
 import { Button } from '@/app/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
-import { Badge } from '@/app/components/ui/badge';
-import { Separator } from '@/app/components/ui/separator';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,7 +13,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/app/components/ui/alert-dialog';
-import { ImageWithFallback } from '@/app/components/figma/ImageWithFallback';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/app/components/ui/dropdown-menu';
+import { IngredientsCard, MAX_SERVINGS, MIN_SERVINGS } from '@/app/components/detail/IngredientsCard';
+import { StepList } from '@/app/components/detail/StepList';
+import { NoteBlock } from '@/app/components/detail/NoteBlock';
+import { AddToWeekPlannerDialog } from '@/app/components/AddToWeekPlannerDialog';
+import { collectionsApi, recipesApi, type Collection } from '@/app/services/api';
+import { collectionColor } from '@/app/utils/collectionColors';
+import { scaleAmount } from '@/app/utils/amounts';
+import { parseSteps } from '@/app/utils/steps';
+import { primaryCollection, sourceHost } from '@/app/utils/recipeMeta';
 import { useTranslation } from '@/app/i18n';
 
 interface RecipeDetailProps {
@@ -24,318 +35,295 @@ interface RecipeDetailProps {
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onCook: (recipe: Recipe, servings: number) => void;
+  onToggleFavorite: (recipe: Recipe) => void;
+  isAdmin?: boolean;
+  onRecipeUpdate?: (recipe: Recipe) => void;
 }
 
-// Helper function to scale ingredient amounts
-function scaleIngredientAmount(amount: string, factor: number): string {
-  if (!amount || factor === 1) return amount;
-  
-  // Match numbers (including decimals and fractions like 1/2)
-  const result = amount.replace(/(\d+(?:[.,]\d+)?(?:\s*\/\s*\d+)?)/g, (match) => {
-    // Handle fractions like "1/2"
-    if (match.includes('/')) {
-      const [num, denom] = match.split('/').map(s => parseFloat(s.trim().replace(',', '.')));
-      const value = (num / denom) * factor;
-      // Format nicely
-      if (value === Math.floor(value)) {
-        return String(value);
-      }
-      // Check for common fractions
-      const remainder = value % 1;
-      if (Math.abs(remainder - 0.5) < 0.01) return `${Math.floor(value) || ''}½`.trim();
-      if (Math.abs(remainder - 0.25) < 0.01) return `${Math.floor(value) || ''}¼`.trim();
-      if (Math.abs(remainder - 0.75) < 0.01) return `${Math.floor(value) || ''}¾`.trim();
-      if (Math.abs(remainder - 0.333) < 0.02) return `${Math.floor(value) || ''}⅓`.trim();
-      if (Math.abs(remainder - 0.666) < 0.02) return `${Math.floor(value) || ''}⅔`.trim();
-      return value.toFixed(1).replace('.', ',');
-    }
-    
-    // Handle regular numbers
-    const num = parseFloat(match.replace(',', '.'));
-    const scaled = num * factor;
-    
-    // Format result
-    if (scaled === Math.floor(scaled)) {
-      return String(scaled);
-    }
-    // Round to max 1 decimal place
-    return scaled.toFixed(1).replace('.', ',').replace(/,0$/, '');
-  });
-  
-  return result;
+function clampServings(value: number): number {
+  return Math.min(MAX_SERVINGS, Math.max(MIN_SERVINGS, value || MIN_SERVINGS));
 }
 
-export function RecipeDetail({ recipe, onClose, onEdit, onDelete }: RecipeDetailProps) {
+/** Rezeptdetail (Handoff 3a). */
+export function RecipeDetail({
+  recipe,
+  onClose,
+  onEdit,
+  onDelete,
+  onCook,
+  onToggleFavorite,
+  isAdmin,
+  onRecipeUpdate,
+}: RecipeDetailProps) {
   const { t } = useTranslation();
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const d = t.kitchen.detail;
+  const [servings, setServings] = useState(() => clampServings(recipe.servings));
+  const [checked, setChecked] = useState<Record<number, boolean>>({});
+  const [activeImage, setActiveImage] = useState(0);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [currentServings, setCurrentServings] = useState(recipe.servings || 4);
-  
-  // Calculate the scaling factor
-  const scaleFactor = currentServings / (recipe.servings || 4);
-  
-  // Scale ingredients based on current servings
-  const scaledIngredients = useMemo<Ingredient[]>(() => {
-    return recipe.ingredients.map(ing => ({
-      name: ing.name,
-      amount: scaleIngredientAmount(ing.amount, scaleFactor)
-    }));
-  }, [recipe.ingredients, scaleFactor]);
-  
-  const decreaseServings = () => {
-    if (currentServings > 1) {
-      setCurrentServings(currentServings - 1);
+  const [showPlannerDialog, setShowPlannerDialog] = useState(false);
+  const [availableCollections, setAvailableCollections] = useState<Collection[]>([]);
+
+  useEffect(() => {
+    setServings(clampServings(recipe.servings));
+    setChecked({});
+    setActiveImage(0);
+  }, [recipe.id, recipe.servings]);
+
+  useEffect(() => {
+    if (isAdmin) {
+      collectionsApi.getAll().then(setAvailableCollections).catch(console.error);
     }
-  };
-  
-  const increaseServings = () => {
-    if (currentServings < 99) {
-      setCurrentServings(currentServings + 1);
-    }
-  };
+  }, [isAdmin]);
 
-  const displayImages = recipe.images && recipe.images.length > 0 
-    ? recipe.images 
-    : ['https://images.unsplash.com/photo-1506368249639-73a05d6f6488?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb29raW5nJTIwaW5ncmVkaWVudHN8ZW58MXx8fHwxNzY4NjIxNTQxfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral'];
+  const scaleFactor = servings / (recipe.servings || MIN_SERVINGS);
+  const scaledIngredients = useMemo<Ingredient[]>(
+    () => recipe.ingredients.map((ing) => ({ name: ing.name, amount: scaleAmount(ing.amount, scaleFactor) })),
+    [recipe.ingredients, scaleFactor],
+  );
+  const steps = useMemo(() => parseSteps(recipe.instructions), [recipe.instructions]);
 
-  const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % displayImages.length);
-  };
+  const collection = primaryCollection(recipe);
+  const hue = collectionColor(collection);
+  const host = sourceHost(recipe.sourceUrl);
+  const images = recipe.images ?? [];
+  const heroImage = images[activeImage] ?? images[0];
+  const activeTime = recipe.prepTime + recipe.cookTime;
+  const collectionsToAdd = availableCollections.filter(
+    (col) => !recipe.collections?.some((rc) => rc.id === col.id),
+  );
 
-  const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + displayImages.length) % displayImages.length);
-  };
-
-  const handleDelete = () => {
-    onDelete();
-    setShowDeleteDialog(false);
-  };
-
-  // Send ingredients to Google Keep via Gemini
-  const sendToGoogleKeep = async () => {
-    // Format ingredients as a list
-    const ingredientsList = scaledIngredients
-      .map(ing => ing.amount ? `${ing.amount} ${ing.name}` : ing.name)
-      .join('\n');
-    
-    // Create Gemini prompt
-    const prompt = `Please add the following ingredients to my shopping list in Google Keep (create the list "Shopping List" if it doesn't exist):
-
-${recipe.title} (${currentServings} ${currentServings === 1 ? t.recipeDetail.serving : t.recipeDetail.servings}):
-${ingredientsList}`;
-    
+  const saveNote = async (notes: string) => {
     try {
-      // Copy prompt to clipboard
+      const updated = await recipesApi.update(recipe.id, { ...recipe, notes: notes || null });
+      onRecipeUpdate?.(updated);
+      toast.success(d.noteSaved);
+    } catch (error) {
+      console.error('Error saving note:', error);
+      toast.error(d.noteSaveError);
+    }
+  };
+
+  const addToCollection = async (collectionId: string) => {
+    try {
+      await collectionsApi.addRecipe(collectionId, recipe.id);
+      const added = availableCollections.find((c) => c.id === collectionId);
+      onRecipeUpdate?.({
+        ...recipe,
+        collections: [...(recipe.collections || []), { id: collectionId, name: added?.name || '' }],
+      });
+      toast.success(t.collections.addedToCollection);
+    } catch (error) {
+      console.error(error);
+      toast.error(t.collections.updateError);
+    }
+  };
+
+  const removeFromCollection = async (collectionId: string) => {
+    try {
+      await collectionsApi.removeRecipe(collectionId, recipe.id);
+      onRecipeUpdate?.({ ...recipe, collections: recipe.collections?.filter((c) => c.id !== collectionId) || [] });
+      toast.success(t.collections.removedFromCollection);
+    } catch (error) {
+      console.error(error);
+      toast.error(t.collections.updateError);
+    }
+  };
+
+  // Send ingredients to Google Keep via Gemini (clipboard prompt)
+  const sendToShoppingList = async () => {
+    const list = scaledIngredients.map((ing) => (ing.amount ? `${ing.amount} ${ing.name}` : ing.name)).join('\n');
+    const servingsLabel = servings === 1 ? t.recipeDetail.serving : t.recipeDetail.servings;
+    const prompt = `Füge bitte folgende Zutaten zu meiner Einkaufsliste in Google Keep hinzu (erstelle die Liste "Einkaufsliste" falls sie nicht existiert):
+
+${recipe.title} (${servings} ${servingsLabel}):
+${list}`;
+
+    try {
       await navigator.clipboard.writeText(prompt);
-      toast.success(t.recipeDetail.promptCopied, {
-        description: t.recipeDetail.promptCopiedDescription,
-      });
-      
-      // Open Gemini in new tab
-      window.open('https://gemini.google.com/app', '_blank');
-    } catch (err) {
-      // Fallback: Show prompt in alert if clipboard fails
-      toast.error(t.recipeDetail.copyError, {
-        description: t.recipeDetail.copyErrorDescription,
-      });
-      console.error('Clipboard error:', err);
+      toast.success(t.recipeDetail.promptCopied, { description: t.recipeDetail.promptCopiedDescription });
+      window.open('https://gemini.google.com/app', '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      console.error('Clipboard error:', error);
+      toast.error(t.recipeDetail.copyError, { description: t.recipeDetail.copyErrorDescription });
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="mb-6 flex items-center justify-between">
-        <Button variant="ghost" onClick={onClose}>
-          ← {t.recipeDetail.back}
-        </Button>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={onEdit}>
-            <Pencil className="h-4 w-4 mr-2" />
-            {t.recipeDetail.edit}
-          </Button>
-          <Button variant="destructive" onClick={() => setShowDeleteDialog(true)}>
-            <Trash2 className="h-4 w-4 mr-2" />
-            {t.recipeDetail.delete}
-          </Button>
-        </div>
-      </div>
-
-      {/* Bildergalerie */}
-      <div className="relative h-96 w-full overflow-hidden rounded-lg mb-6">
-        <ImageWithFallback
-          src={displayImages[currentImageIndex]}
-          alt={`${recipe.title} - ${t.recipeDetail.image} ${currentImageIndex + 1}`}
-          className="w-full h-full object-cover"
-        />
-        {displayImages.length > 1 && (
+    <div className="animate-rise">
+      {/* Kopfzeile */}
+      <div className="flex flex-wrap items-center gap-[22px] max-[900px]:gap-3">
+        <button
+          type="button"
+          onClick={onClose}
+          className="inline-flex items-center gap-2 text-[14.5px] font-semibold text-ink-2 transition-colors hover:text-ink"
+        >
+          <ArrowLeft className="size-[18px]" strokeWidth={2.2} />
+          {d.backToCollection}
+        </button>
+        <span className="flex-1" />
+        {host && recipe.sourceUrl && (
           <>
-            <Button
-              variant="secondary"
-              size="icon"
-              className="absolute left-4 top-1/2 -translate-y-1/2"
-              onClick={prevImage}
-            >
-              <ChevronLeft className="h-6 w-6" />
-            </Button>
-            <Button
-              variant="secondary"
-              size="icon"
-              className="absolute right-4 top-1/2 -translate-y-1/2"
-              onClick={nextImage}
-            >
-              <ChevronRight className="h-6 w-6" />
-            </Button>
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
-              {currentImageIndex + 1} / {displayImages.length}
-            </div>
+            <span className="text-[13.5px] font-medium text-ink-4 max-[900px]:hidden">
+              {d.source}:{' '}
+              <a
+                href={recipe.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-[12.5px] text-ink-2 hover:text-tomato hover:underline"
+              >
+                {host}
+              </a>
+            </span>
+            <span className="h-6 w-px bg-line max-[900px]:hidden" />
           </>
         )}
+        <Button variant="paper" size="pill-sm" onClick={onEdit}>
+          <Pencil strokeWidth={2} />
+          {t.recipeDetail.edit}
+        </Button>
+        <Button
+          variant="paper"
+          size="pill-sm"
+          onClick={() => onToggleFavorite(recipe)}
+          aria-pressed={!!recipe.isFavorite}
+        >
+          <Heart
+            strokeWidth={2}
+            style={recipe.isFavorite ? { fill: 'var(--tomato)', stroke: 'var(--tomato)' } : { stroke: 'var(--tomato)' }}
+          />
+          {recipe.isFavorite ? d.saved : d.save}
+        </Button>
+        <Button
+          variant="paper"
+          size="icon-round"
+          className="size-[38px] text-ink-3 hover:text-tomato"
+          onClick={() => setShowDeleteDialog(true)}
+          title={t.recipeDetail.delete}
+          aria-label={t.recipeDetail.delete}
+        >
+          <Trash2 className="size-4" />
+        </Button>
       </div>
 
-      <h1 className="mb-4">{recipe.title}</h1>
-
-      {/* Quell-URL, wenn vorhanden */}
-      {recipe.sourceUrl && (
-        <div className="mb-4">
-          <a
-            href={recipe.sourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
-          >
-            <ExternalLink className="h-4 w-4" />
-            {t.recipeDetail.viewOriginal}
-          </a>
-        </div>
-      )}
-
-      {/* Zeitinformationen */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-              <Clock className="h-4 w-4" />
-              <span>{t.recipeDetail.preparation}</span>
-            </div>
-            <p className="font-semibold">{recipe.prepTime} {t.recipeDetail.min}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-              <Clock className="h-4 w-4" />
-              <span>{t.recipeDetail.restTime}</span>
-            </div>
-            <p className="font-semibold">{recipe.restTime} {t.recipeDetail.min}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-              <Clock className="h-4 w-4" />
-              <span>{t.recipeDetail.cookTime}</span>
-            </div>
-            <p className="font-semibold">{recipe.cookTime} {t.recipeDetail.min}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-              <Flame className="h-4 w-4" />
-              <span>{t.recipeDetail.calories}</span>
-            </div>
-            <p className="font-semibold">{recipe.caloriesPerUnit} kcal/{recipe.weightUnit}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Zutaten */}
-      <Card className="mb-6">
-        <CardHeader>
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-3">
-              <CardTitle>{t.recipeDetail.ingredients}</CardTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={sendToGoogleKeep}
-                className="text-xs"
+      {/* Body */}
+      <div className="mt-[34px] grid items-start gap-10 min-[1100px]:grid-cols-[1fr_396px] max-[1100px]:grid-cols-1">
+        <div className="min-w-0">
+          {/* Badges */}
+          <div className="flex flex-wrap items-center gap-[10px]">
+            {recipe.collections?.map((col) => (
+              <span
+                key={col.id}
+                className="inline-flex h-7 items-center gap-1 rounded-full bg-white px-[13px] text-[11.5px] font-bold uppercase tracking-[.08em]"
+                style={{ color: collectionColor(col.name) }}
               >
-                <ShoppingCart className="h-3 w-3 mr-1" />
-                {t.recipeDetail.toShoppingList}
-              </Button>
-            </div>
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={decreaseServings}
-                disabled={currentServings <= 1}
-              >
-                <Minus className="h-4 w-4" />
-              </Button>
-              <div className="flex items-center gap-2 min-w-[100px] justify-center">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                <span className="font-semibold">{currentServings}</span>
-                <span className="text-sm text-muted-foreground">
-                  {currentServings === 1 ? t.recipeDetail.serving : t.recipeDetail.servings}
-                </span>
-              </div>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={increaseServings}
-                disabled={currentServings >= 99}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-          {currentServings !== recipe.servings && (
-            <p className="text-xs text-muted-foreground mt-2">
-              {t.recipeDetail.originalRecipeFor} {recipe.servings} {recipe.servings === 1 ? t.recipeDetail.serving : t.recipeDetail.servings}
-            </p>
-          )}
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-1">
-            {scaledIngredients.map((ingredient, index) => (
-              <li key={index} className="flex items-baseline py-1.5 border-b border-dashed border-muted last:border-0">
-                <span className="w-24 sm:w-28 flex-shrink-0 font-medium text-right pr-4 text-muted-foreground">
-                  {ingredient.amount}
-                </span>
-                <span className="flex-1">{ingredient.name}</span>
-              </li>
+                {col.name}
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => removeFromCollection(col.id)}
+                    className="ml-1 text-ink-4 hover:text-tomato"
+                    aria-label={`${col.name} entfernen`}
+                  >
+                    <X className="size-3" />
+                  </button>
+                )}
+              </span>
             ))}
-          </ul>
-        </CardContent>
-      </Card>
+            {recipe.categories.map((category) => (
+              <span
+                key={category}
+                className="inline-flex h-7 items-center rounded-full border border-line px-[13px] text-[12.5px] font-medium text-[oklch(0.45_0.03_48)]"
+              >
+                {category}
+              </span>
+            ))}
+            {isAdmin && collectionsToAdd.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex h-7 items-center gap-1 rounded-full border border-dashed border-line px-[11px] text-[12px] font-medium text-ink-4 hover:border-tomato hover:text-ink"
+                  >
+                    <FolderPlus className="size-3.5" />
+                    {d.addToCollection}
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  {collectionsToAdd.map((col) => (
+                    <DropdownMenuItem key={col.id} onClick={() => addToCollection(col.id)}>
+                      <span className="size-2 rounded-full" style={{ background: collectionColor(col.name) }} />
+                      {col.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
 
-      {/* Zubereitung */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t.recipeDetail.instructions}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="whitespace-pre-line">{recipe.instructions}</p>
-        </CardContent>
-      </Card>
+          <h1 className="mt-4 font-display text-[46px] font-normal leading-[1.08] tracking-[-0.015em] [text-wrap:balance] max-[700px]:text-[34px]">
+            {recipe.title}
+          </h1>
 
-      {/* Notizen */}
-      {recipe.notes && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t.recipeDetail.notes}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="whitespace-pre-line">{recipe.notes}</p>
-          </CardContent>
-        </Card>
-      )}
+          {/* Titelfoto */}
+          <div className="relative mt-6 h-[420px] overflow-hidden rounded-3xl bg-photo-fallback shadow-[0_26px_50px_-26px_oklch(0.4_0.05_50_/_.55)] max-[700px]:h-[260px]">
+            {heroImage ? (
+              <img src={heroImage} alt={recipe.title} className="h-full w-full object-cover" />
+            ) : (
+              <div className="grid h-full w-full place-items-center">
+                <UtensilsCrossed className="size-14" style={{ color: hue }} strokeWidth={1.4} />
+              </div>
+            )}
+          </div>
+          {images.length > 1 && (
+            <div className="mt-3 flex gap-2 overflow-x-auto" aria-label={d.moreImages}>
+              {images.map((image, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => setActiveImage(index)}
+                  className={`size-16 shrink-0 overflow-hidden rounded-xl border-2 transition-colors ${
+                    index === activeImage ? 'border-tomato' : 'border-transparent hover:border-line'
+                  }`}
+                >
+                  <img src={image} alt={`${recipe.title} ${index + 1}`} className="h-full w-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
 
-      {/* Lösch-Dialog */}
+          {/* Metrik-Karte */}
+          <div className="mt-[26px] flex flex-wrap items-center gap-[30px] rounded-[18px] bg-white px-6 py-5 shadow-metric">
+            <Metric value={`${recipe.totalTime} ${t.kitchen.library.minutes}`} label={d.total} />
+            <Metric value={`${activeTime} ${t.kitchen.library.minutes}`} label={d.activeTime} />
+            {recipe.caloriesPerUnit > 0 && <Metric value={String(recipe.caloriesPerUnit)} label={d.kcalPerServing} />}
+            <Metric value={`${recipe.cookCount ?? 0}×`} label={d.cooked} />
+            <span className="flex-1" />
+            <Button variant="tomato" size="pill-md" onClick={() => onCook(recipe, servings)}>
+              <Play strokeWidth={2.2} />
+              {d.cookMode}
+            </Button>
+          </div>
+
+          <NoteBlock note={recipe.notes ?? ''} onSave={saveNote} />
+
+          <StepList steps={steps} />
+        </div>
+
+        <div className="min-[1100px]:sticky min-[1100px]:top-6">
+          <IngredientsCard
+            ingredients={scaledIngredients}
+            servings={servings}
+            onServingsChange={setServings}
+            checked={checked}
+            onToggleChecked={(index) => setChecked((prev) => ({ ...prev, [index]: !prev[index] }))}
+            onShoppingList={sendToShoppingList}
+            onPlan={() => setShowPlannerDialog(true)}
+          />
+        </div>
+      </div>
+
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -346,12 +334,35 @@ ${ingredientsList}`;
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t.cancel}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={() => {
+                setShowDeleteDialog(false);
+                onDelete();
+              }}
+              className="bg-tomato text-white hover:bg-tomato-str"
+            >
               {t.delete}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AddToWeekPlannerDialog
+        recipe={recipe}
+        servings={servings}
+        open={showPlannerDialog}
+        onOpenChange={setShowPlannerDialog}
+        onSuccess={() => toast.success(t.planner.recipeAdded)}
+      />
+    </div>
+  );
+}
+
+function Metric({ value, label }: { value: string; label: string }) {
+  return (
+    <div>
+      <div className="font-mono text-2xl font-bold leading-none tracking-[-0.03em] tabular-nums">{value}</div>
+      <div className="mt-[6px] text-[11px] font-semibold uppercase tracking-[.1em] text-ink-4">{label}</div>
     </div>
   );
 }

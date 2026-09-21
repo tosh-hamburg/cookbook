@@ -213,7 +213,28 @@ export const recipesApi = {
       method: 'DELETE',
     });
   },
+
+  // Cook history: one event per finished cook mode run (feeds the cook
+  // counter and "recipe of the week").
+  recordCooked: async (id: string, servings?: number): Promise<RecipeStats> => {
+    return fetchApi<RecipeStats>(`/recipes/${id}/cooked`, {
+      method: 'POST',
+      body: JSON.stringify({ servings }),
+    });
+  },
+
+  setFavorite: async (id: string, isFavorite: boolean): Promise<{ isFavorite: boolean }> => {
+    return fetchApi<{ isFavorite: boolean }>(`/recipes/${id}/favorite`, {
+      method: isFavorite ? 'PUT' : 'DELETE',
+    });
+  },
 };
+
+export interface RecipeStats {
+  cookCount: number;
+  lastCookedAt: string | null;
+  isFavorite: boolean;
+}
 
 // Categories API
 export const categoriesApi = {

@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Figtree:wght@400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Archivo+Black&family=Karla:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="./image-slot.js"></script>
+<style>
+  body { margin: 0; background: #e9e2d6; }
+  a { color: oklch(0.52 0.17 32); text-decoration: none; }
+  a:hover { color: oklch(0.44 0.16 32); text-decoration: underline; }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+</style>
+</helmet>
+
+<section style="display:flex; flex-direction:column; gap:28px; padding:56px 56px 30px; font-family:'Figtree',system-ui,sans-serif; color:oklch(0.26 0.04 45)">
+  <div style="max-width:900px">
+    <div style="font:700 12px/1 'Figtree',sans-serif; letter-spacing:.14em; text-transform:uppercase; color:oklch(0.56 0.17 32)">Runde 3 · Ausbau von 2a</div>
+    <h1 style="margin:12px 0 0; font:400 40px/1.1 'Instrument Serif',Georgia,serif; letter-spacing:-0.01em">Der komplette Flow im Küchentisch-Stil</h1>
+    <p style="margin:14px 0 0; font:16px/1.65 'Figtree',sans-serif; color:oklch(0.42 0.03 45); text-wrap:pretty"><a href="#3a">3a</a> Rezeptdetail mit Portionsrechner, <a href="#3b">3b</a> Kochmodus für den Küchenabstand, <a href="#3c">3c</a> Wochenplaner mit Einkaufszettel. Übersicht <a href="#2a">2a</a> unten ist aktualisiert: Kategorien sind jetzt mehrfach wählbar, „Rezept der Woche" wird automatisch nach Kochhäufigkeit gewählt.</p>
+  </div>
+
+  <div style="display:flex; flex-wrap:wrap; align-items:flex-start; gap:40px">
+
+    <div id="3a" style="width:1340px; flex:none; display:flex; flex-direction:column; gap:14px">
+      <div style="display:flex; align-items:baseline; gap:12px">
+        <span style="font:700 12px/22px 'JetBrains Mono',monospace; background:oklch(0.56 0.17 32); color:#fff; padding:0 9px; border-radius:999px">3a</span>
+        <div style="font:600 17px/1.2 'Figtree',sans-serif">Rezeptdetail</div>
+        <div style="font:14px/1.4 'Figtree',sans-serif; color:oklch(0.5 0.03 45)">Zutaten rechnen mit den Portionen mit, Schritte sind abhakbar, eigene Notiz sitzt direkt am Rezept.</div>
+      </div>
+
+      <div style="height:1080px; overflow:hidden; border-radius:22px; border:1px solid oklch(0.86 0.02 80); box-shadow:0 30px 60px -30px oklch(0.4 0.05 50 / .45); background:oklch(0.968 0.018 85); position:relative">
+        <div style="position:absolute; inset:0; background-image:radial-gradient(oklch(0.62 0.05 50 / .09) 1px, transparent 1px); background-size:22px 22px; pointer-events:none"></div>
+
+        <header style="position:relative; height:78px; display:flex; align-items:center; gap:22px; padding:0 40px; border-bottom:1px solid oklch(0.88 0.02 80)">
+          <span style="display:inline-flex; align-items:center; gap:8px; font:600 14.5px/1 'Figtree',sans-serif; color:oklch(0.42 0.03 45); cursor:pointer" style-hover="color:oklch(0.26 0.04 45)">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"></path></svg>
+            Zurück zur Sammlung
+          </span>
+          <div style="flex:1"></div>
+          <span style="font:500 13.5px/1 'Figtree',sans-serif; color:oklch(0.56 0.03 50)">Quelle: <span style="font-family:'JetBrains Mono',monospace; font-size:12.5px">{{ detailSource }}</span></span>
+          <span style="width:1px; height:24px; background:oklch(0.88 0.02 80)"></span>
+          <span style="display:inline-flex; align-items:center; gap:8px; height:38px; padding:0 15px; border-radius:999px; border:1px solid oklch(0.86 0.02 80); font:600 13.5px/1 'Figtree',sans-serif; cursor:pointer; background:#fff" style-hover="border-color:oklch(0.56 0.17 32)">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+            Bearbeiten
+          </span>
+          <span style="display:inline-flex; align-items:center; gap:8px; height:38px; padding:0 15px; border-radius:999px; border:1px solid oklch(0.86 0.02 80); font:600 13.5px/1 'Figtree',sans-serif; cursor:pointer; background:#fff" style-hover="border-color:oklch(0.56 0.17 32)">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="oklch(0.56 0.17 32)" fill-rule="evenodd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5C2 10.8 3.5 12.5 5 14l7 7Z"></path></svg>
+            Gemerkt
+          </span>
+        </header>
+
+        <div style="position:relative; height:1002px; overflow:auto; padding:34px 40px 60px; display:grid; grid-template-columns:1fr 396px; gap:40px; align-items:start">
+          <div>
+            <div style="display:inline-flex; align-items:center; gap:10px">
+              <span style="height:28px; display:inline-flex; align-items:center; padding:0 13px; border-radius:999px; background:#fff; font:700 11.5px/1 'Figtree',sans-serif; letter-spacing:.08em; text-transform:uppercase; color:{{ detailHue }}">{{ detailCollection }}</span>
+              <sc-for list="{{ detailTags }}" as="t" hint-placeholder-count="3">
+                <span style="height:28px; display:inline-flex; align-items:center; padding:0 13px; border-radius:999px; border:1px solid oklch(0.86 0.02 80); font:500 12.5px/1 'Figtree',sans-serif; color:oklch(0.45 0.03 48)">{{ t }}</span>
+              </sc-for>
+            </div>
+            <h2 style="margin:16px 0 0; font:400 46px/1.08 'Instrument Serif',serif; letter-spacing:-0.015em; text-wrap:balance">{{ detailTitle }}</h2>
+
+            <div style="position:relative; margin-top:24px; height:420px; border-radius:24px; overflow:hidden; box-shadow:0 26px 50px -26px oklch(0.4 0.05 50 / .55)">
+              <image-slot id="v3a-hero" shape="rect" placeholder="Titelfoto des Rezepts"></image-slot>
+            </div>
+
+            <div style="display:flex; gap:30px; margin-top:26px; padding:20px 24px; background:#fff; border-radius:18px; box-shadow:0 12px 30px -24px oklch(0.4 0.05 50 / .7)">
+              <sc-for list="{{ detailMeta }}" as="m" hint-placeholder-count="4">
+                <div>
+                  <div style="font:700 24px/1 'JetBrains Mono',monospace; letter-spacing:-0.03em">{{ m.v }}</div>
+                  <div style="margin-top:6px; font:600 11px/1 'Figtree',sans-serif; letter-spacing:.1em; text-transform:uppercase; color:oklch(0.56 0.03 50)">{{ m.k }}</div>
+                </div>
+              </sc-for>
+              <div style="flex:1"></div>
+              <span style="align-self:center; display:inline-flex; align-items:center; gap:9px; height:46px; padding:0 22px; border-radius:999px; background:oklch(0.56 0.17 32); color:#fff; font:600 15px/1 'Figtree',sans-serif; cursor:pointer; box-shadow:0 10px 24px -14px oklch(0.56 0.17 32 / .9)" style-hover="background:oklch(0.48 0.17 32)">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 9-14 9z"></path></svg>
+                Kochmodus
+              </span>
+            </div>
+
+            <div style="margin-top:30px; padding:18px 22px; border-radius:18px; background:oklch(0.86 0.09 110 / .38); border:1px solid oklch(0.78 0.08 110 / .5)">
+              <div style="font:700 11px/1 'Figtree',sans-serif; letter-spacing:.12em; text-transform:uppercase; color:oklch(0.42 0.08 130)">Deine Notiz</div>
+              <div style="margin-top:9px; font:15.5px/1.6 'Figtree',sans-serif; color:oklch(0.3 0.04 60); text-wrap:pretty">{{ detailNote }}</div>
+            </div>
+
+            <div style="display:flex; align-items:center; gap:14px; margin-top:34px">
+              <h3 style="margin:0; font:400 30px/1 'Instrument Serif',serif">Zubereitung</h3>
+              <div style="height:1px; flex:1; background:oklch(0.88 0.02 80)"></div>
+            </div>
+            <div style="margin-top:20px; display:flex; flex-direction:column; gap:18px">
+              <sc-for list="{{ steps }}" as="s" hint-placeholder-count="5">
+                <div style="display:grid; grid-template-columns:64px 1fr; gap:20px; padding-bottom:18px; border-bottom:1px dashed oklch(0.87 0.02 80)">
+                  <div style="font:400 40px/1 'Instrument Serif',serif; color:oklch(0.78 0.06 45)">{{ s.no }}</div>
+                  <div>
+                    <div style="display:flex; align-items:baseline; gap:12px">
+                      <div style="font:600 16px/1.2 'Figtree',sans-serif">{{ s.h }}</div>
+                      <div style="font:500 12.5px/1 'JetBrains Mono',monospace; color:oklch(0.56 0.17 32)">{{ s.min }}</div>
+                    </div>
+                    <div style="margin-top:8px; font:15.5px/1.65 'Figtree',sans-serif; color:oklch(0.4 0.03 45); text-wrap:pretty">{{ s.t }}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="position:sticky; top:0; display:flex; flex-direction:column; gap:16px">
+            <div style="background:#fff; border-radius:20px; padding:22px; box-shadow:0 16px 36px -26px oklch(0.4 0.05 50 / .8)">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:12px">
+                <h3 style="margin:0; font:400 26px/1 'Instrument Serif',serif">Zutaten</h3>
+                <div style="display:flex; align-items:center; gap:2px; border:1px solid oklch(0.88 0.02 80); border-radius:999px; padding:3px">
+                  <span onClick="{{ onMinus }}" style="width:30px; height:30px; border-radius:999px; display:grid; place-items:center; cursor:pointer; color:oklch(0.4 0.03 45)" style-hover="background:oklch(0.94 0.02 80)">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14"></path></svg>
+                  </span>
+                  <span style="min-width:44px; text-align:center; font:700 15px/1 'JetBrains Mono',monospace">{{ servings }}</span>
+                  <span onClick="{{ onPlus }}" style="width:30px; height:30px; border-radius:999px; display:grid; place-items:center; cursor:pointer; color:oklch(0.4 0.03 45)" style-hover="background:oklch(0.94 0.02 80)">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14M12 5v14"></path></svg>
+                  </span>
+                </div>
+              </div>
+              <div style="margin-top:6px; font:13px/1.5 'Figtree',sans-serif; color:oklch(0.58 0.03 55)">Portionen ändern rechnet die Mengen sofort um.</div>
+              <div style="margin-top:14px; display:flex; flex-direction:column">
+                <sc-for list="{{ ings }}" as="i" hint-placeholder-count="10">
+                  <div onClick="{{ i.onToggle }}" style="display:grid; grid-template-columns:22px 1fr auto; gap:11px; align-items:center; padding:9px 2px; border-bottom:1px solid oklch(0.93 0.015 80); cursor:pointer">
+                    <span style="width:20px; height:20px; border-radius:6px; border:1.5px solid {{ i.boxBd }}; background:{{ i.boxBg }}; display:grid; place-items:center">
+                      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="opacity:{{ i.tickOpacity }}"><path d="M20 6 9 17l-5-5"></path></svg>
+                    </span>
+                    <span style="font:15px/1.4 'Figtree',sans-serif; color:{{ i.fg }}; text-decoration:{{ i.deco }}">{{ i.name }}</span>
+                    <span style="font:500 13.5px/1 'JetBrains Mono',monospace; color:{{ i.fg }}; text-decoration:{{ i.deco }}">{{ i.amount }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="margin-top:16px; display:flex; flex-direction:column; gap:9px">
+                <span style="display:inline-flex; align-items:center; justify-content:center; gap:9px; height:46px; border-radius:999px; border:1.5px solid oklch(0.26 0.04 45); font:600 14.5px/1 'Figtree',sans-serif; cursor:pointer" style-hover="background:oklch(0.26 0.04 45); color:#fff">
+                  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h2l2.6 12.4a2 2 0 0 0 2 1.6h9.8a2 2 0 0 0 2-1.6L22 8H5M9 21h.01M18 21h.01"></path></svg>
+                  Auf den Einkaufszettel
+                </span>
+                <span style="display:inline-flex; align-items:center; justify-content:center; gap:9px; height:46px; border-radius:999px; background:oklch(0.26 0.04 45); color:#fff; font:600 14.5px/1 'Figtree',sans-serif; cursor:pointer" style-hover="background:oklch(0.2 0.04 45)">
+                  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="4"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+                  Auf einen Tag legen
+                </span>
+                <div style="text-align:center; font:13px/1.5 'Figtree',sans-serif; color:oklch(0.6 0.03 55)"><b style="font-family:'JetBrains Mono',monospace; font-weight:500">{{ checkedCount }}</b> Zutaten abgehakt</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="3b" style="width:1340px; flex:none; display:flex; flex-direction:column; gap:14px">
+      <div style="display:flex; align-items:baseline; gap:12px">
+        <span style="font:700 12px/22px 'JetBrains Mono',monospace; background:oklch(0.56 0.17 32); color:#fff; padding:0 9px; border-radius:999px">3b</span>
+        <div style="font:600 17px/1.2 'Figtree',sans-serif">Kochmodus</div>
+        <div style="font:14px/1.4 'Figtree',sans-serif; color:oklch(0.5 0.03 45)">Dunkel, große Typo, ein Schritt pro Ansicht — lesbar aus zwei Metern, Bildschirm bleibt an.</div>
+      </div>
+
+      <div style="height:820px; display:flex; overflow:hidden; border-radius:22px; background:oklch(0.22 0.035 45); color:oklch(0.94 0.02 80); box-shadow:0 30px 60px -30px oklch(0.3 0.05 50 / .6)">
+        <div style="width:300px; flex:none; background:oklch(0.18 0.03 45); padding:28px 22px; display:flex; flex-direction:column">
+          <div style="font:400 24px/1.15 'Instrument Serif',serif; color:#fff; text-wrap:pretty">{{ detailTitle }}</div>
+          <div style="margin-top:8px; font:500 13px/1 'Figtree',sans-serif; color:oklch(0.72 0.04 80)">{{ servings }} Portionen · {{ cookStepOf }} Schritte</div>
+          <div style="margin-top:24px; display:flex; flex-direction:column; gap:4px">
+            <sc-for list="{{ cookRail }}" as="s" hint-placeholder-count="5">
+              <div onClick="{{ s.onPick }}" style="display:grid; grid-template-columns:22px 1fr; gap:12px; align-items:center; padding:11px 12px; border-radius:12px; cursor:pointer; background:{{ s.bg }}; color:{{ s.fg }}" style-hover="background:oklch(0.26 0.04 45)">
+                <span style="width:9px; height:9px; border-radius:999px; background:{{ s.dot }}; justify-self:center"></span>
+                <span style="font:600 14px/1.3 'Figtree',sans-serif">{{ s.h }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="margin-top:auto; padding-top:20px; border-top:1px solid oklch(0.3 0.03 50)">
+            <div style="font:700 10.5px/1 'Figtree',sans-serif; letter-spacing:.12em; text-transform:uppercase; color:oklch(0.68 0.04 80)">Zutaten für diesen Durchgang</div>
+            <div style="margin-top:12px; display:flex; flex-direction:column; gap:8px">
+              <sc-for list="{{ cookIngs }}" as="i" hint-placeholder-count="6">
+                <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px; font:14px/1.3 'Figtree',sans-serif; color:oklch(0.86 0.02 80)">
+                  <span>{{ i.name }}</span>
+                  <span style="font:500 13px/1 'JetBrains Mono',monospace; color:oklch(0.82 0.12 90)">{{ i.amount }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <div style="flex:1; min-width:0; display:flex; flex-direction:column; padding:34px 44px 30px">
+          <div style="display:flex; align-items:center; gap:16px">
+            <div style="font:700 12px/1 'Figtree',sans-serif; letter-spacing:.16em; text-transform:uppercase; color:oklch(0.82 0.12 90)">Schritt {{ cookStepNo }} von {{ cookStepOf }}</div>
+            <div style="flex:1; height:4px; border-radius:999px; background:oklch(0.3 0.03 50); overflow:hidden">
+              <div style="width:{{ progress }}; height:100%; background:oklch(0.82 0.12 90); transition:width .2s ease"></div>
+            </div>
+            <div style="display:inline-flex; align-items:center; gap:8px; font:500 13px/1 'Figtree',sans-serif; color:oklch(0.74 0.03 80)">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3"></path><circle cx="12" cy="12" r="4"></circle></svg>
+              Bildschirm bleibt an
+            </div>
+          </div>
+
+          <div style="flex:1; min-height:0; display:flex; flex-direction:column; justify-content:center; padding:28px 0">
+            <div style="font:400 30px/1 'Instrument Serif',serif; color:oklch(0.82 0.12 90)">{{ cookHead }}</div>
+            <div style="margin-top:20px; font:500 34px/1.4 'Figtree',sans-serif; color:#fff; max-width:780px; text-wrap:pretty">{{ cookText }}</div>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:20px">
+            <div style="display:flex; align-items:center; gap:16px; padding:16px 22px; border-radius:18px; background:oklch(0.18 0.03 45)">
+              <div style="font:700 44px/1 'JetBrains Mono',monospace; letter-spacing:-0.04em; color:#fff">{{ cookTimer }}</div>
+              <div style="display:flex; flex-direction:column; gap:6px">
+                <span style="display:inline-flex; align-items:center; gap:7px; height:32px; padding:0 13px; border-radius:999px; background:oklch(0.82 0.12 90); color:oklch(0.24 0.04 60); font:700 12.5px/1 'Figtree',sans-serif; cursor:pointer">Timer starten</span>
+                <span style="font:500 11.5px/1 'Figtree',sans-serif; color:oklch(0.7 0.04 80)">Klingelt auch im Hintergrund</span>
+              </div>
+            </div>
+            <div style="flex:1"></div>
+            <span onClick="{{ onPrev }}" style="display:inline-flex; align-items:center; gap:10px; height:60px; padding:0 26px; border-radius:999px; border:1.5px solid oklch(0.44 0.04 50); color:oklch(0.9 0.02 80); font:600 16px/1 'Figtree',sans-serif; cursor:pointer" style-hover="border-color:oklch(0.82 0.12 90); color:#fff">
+              <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"></path></svg>
+              Zurück
+            </span>
+            <span onClick="{{ onNext }}" style="display:inline-flex; align-items:center; gap:10px; height:60px; padding:0 32px; border-radius:999px; background:oklch(0.56 0.17 32); color:#fff; font:600 17px/1 'Figtree',sans-serif; cursor:pointer; box-shadow:0 14px 30px -16px oklch(0.56 0.17 32)" style-hover="background:oklch(0.48 0.17 32)">
+              Weiter
+              <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="3c" style="width:1340px; flex:none; display:flex; flex-direction:column; gap:14px">
+      <div style="display:flex; align-items:baseline; gap:12px">
+        <span style="font:700 12px/22px 'JetBrains Mono',monospace; background:oklch(0.56 0.17 32); color:#fff; padding:0 9px; border-radius:999px">3c</span>
+        <div style="font:600 17px/1.2 'Figtree',sans-serif">Wochenplaner</div>
+        <div style="font:14px/1.4 'Figtree',sans-serif; color:oklch(0.5 0.03 45)">Sieben Tage × drei Mahlzeiten, leere Slots sind gestrichelt, Vorschläge und Einkaufszettel rechts.</div>
+      </div>
+
+      <div style="height:900px; overflow:hidden; border-radius:22px; border:1px solid oklch(0.86 0.02 80); box-shadow:0 30px 60px -30px oklch(0.4 0.05 50 / .45); background:oklch(0.968 0.018 85); position:relative">
+        <div style="position:absolute; inset:0; background-image:radial-gradient(oklch(0.62 0.05 50 / .09) 1px, transparent 1px); background-size:22px 22px; pointer-events:none"></div>
+
+        <header style="position:relative; height:78px; display:flex; align-items:center; gap:18px; padding:0 40px; border-bottom:1px solid oklch(0.88 0.02 80)">
+          <span style="font:400 30px/1 'Instrument Serif',serif">Wochenplan</span>
+          <div style="display:flex; align-items:center; gap:6px; margin-left:10px">
+            <span style="width:34px; height:34px; border-radius:999px; border:1px solid oklch(0.86 0.02 80); background:#fff; display:grid; place-items:center; cursor:pointer" style-hover="border-color:oklch(0.56 0.17 32)">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="oklch(0.4 0.03 45)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>
+            </span>
+            <span style="font:600 15px/1 'JetBrains Mono',monospace; padding:0 6px">KW 39</span>
+            <span style="width:34px; height:34px; border-radius:999px; border:1px solid oklch(0.86 0.02 80); background:#fff; display:grid; place-items:center; cursor:pointer" style-hover="border-color:oklch(0.56 0.17 32)">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="oklch(0.4 0.03 45)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg>
+            </span>
+          </div>
+          <span style="font:500 14px/1 'Figtree',sans-serif; color:oklch(0.56 0.03 50)">22.–28. September</span>
+          <div style="flex:1"></div>
+          <span style="font:500 13.5px/1 'Figtree',sans-serif; color:oklch(0.5 0.03 48)">{{ slotHint }}</span>
+          <span style="display:inline-flex; align-items:center; gap:9px; height:42px; padding:0 20px; border-radius:999px; background:oklch(0.26 0.04 45); color:#fff; font:600 14.5px/1 'Figtree',sans-serif; cursor:pointer" style-hover="background:oklch(0.2 0.04 45)">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h2l2.6 12.4a2 2 0 0 0 2 1.6h9.8a2 2 0 0 0 2-1.6L22 8H5M9 21h.01M18 21h.01"></path></svg>
+            Einkaufszettel erzeugen
+          </span>
+        </header>
+
+        <div style="position:relative; height:822px; display:flex">
+          <div style="flex:1; min-width:0; overflow:auto; padding:26px 30px 40px">
+            <div style="display:grid; grid-template-columns:96px repeat(7, minmax(0,1fr)); gap:10px">
+              <div></div>
+              <sc-for list="{{ planDays }}" as="d" hint-placeholder-count="7">
+                <div style="text-align:center; padding-bottom:6px">
+                  <div style="font:600 12px/1 'Figtree',sans-serif; letter-spacing:.12em; text-transform:uppercase; color:oklch(0.56 0.03 50)">{{ d.day }}</div>
+                  <div style="margin-top:6px; font:500 13px/1 'JetBrains Mono',monospace; color:oklch(0.42 0.03 45)">{{ d.date }}</div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="margin-top:8px; display:flex; flex-direction:column; gap:10px">
+              <sc-for list="{{ rowsPlan }}" as="row" hint-placeholder-count="3">
+                <div style="display:grid; grid-template-columns:96px repeat(7, minmax(0,1fr)); gap:10px">
+                  <div style="display:flex; align-items:center; font:600 13px/1.2 'Figtree',sans-serif; color:oklch(0.4 0.03 45)">{{ row.label }}</div>
+                  <sc-for list="{{ row.cells }}" as="s" hint-placeholder-count="7">
+                    <div onClick="{{ s.onPick }}" style="min-height:118px; border-radius:16px; padding:12px 13px; cursor:pointer; background:{{ s.bg }}; border:1.5px {{ s.bdStyle }} {{ s.bd }}; box-shadow:{{ s.shadow }}; transition:transform .14s ease" style-hover="transform:translateY(-2px)">
+                      <div style="display:flex; align-items:center; gap:7px">
+                        <span style="width:8px; height:8px; border-radius:999px; background:{{ s.hue }}"></span>
+                        <span style="font:700 10px/1 'Figtree',sans-serif; letter-spacing:.1em; text-transform:uppercase; color:{{ s.hue }}">{{ s.collection }}</span>
+                      </div>
+                      <div style="margin-top:9px; font:{{ s.titleFont }}; color:{{ s.fg }}; text-wrap:pretty">{{ s.title }}</div>
+                      <div style="margin-top:8px; font:500 12px/1 'JetBrains Mono',monospace; color:oklch(0.58 0.03 55)">{{ s.time }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="width:330px; flex:none; border-left:1px solid oklch(0.88 0.02 80); background:#fff; padding:24px 24px 36px; overflow:auto">
+            <h3 style="margin:0; font:400 24px/1 'Instrument Serif',serif">Vorschläge</h3>
+            <div style="margin-top:8px; font:13px/1.5 'Figtree',sans-serif; color:oklch(0.56 0.03 55)">Nach Kochhäufigkeit und offenen Zutaten im Vorrat.</div>
+            <div style="margin-top:16px; display:flex; flex-direction:column; gap:10px">
+              <sc-for list="{{ suggestions }}" as="s" hint-placeholder-count="5">
+                <div style="display:grid; grid-template-columns:8px 1fr auto; gap:11px; align-items:center; padding:12px 13px; border-radius:14px; border:1px solid oklch(0.9 0.015 80); cursor:pointer" style-hover="border-color:oklch(0.56 0.17 32)">
+                  <span style="width:8px; height:8px; border-radius:999px; background:{{ s.hue }}"></span>
+                  <div style="min-width:0">
+                    <div style="font:500 14px/1.3 'Figtree',sans-serif; text-wrap:pretty">{{ s.title }}</div>
+                    <div style="margin-top:3px; font:500 11.5px/1 'Figtree',sans-serif; letter-spacing:.06em; text-transform:uppercase; color:{{ s.hue }}">{{ s.collection }}</div>
+                  </div>
+                  <span style="font:500 12px/1 'JetBrains Mono',monospace; color:oklch(0.56 0.03 55)">{{ s.time }}</span>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="margin-top:26px; padding:18px; border-radius:18px; background:oklch(0.26 0.04 45); color:oklch(0.94 0.02 80)">
+              <div style="font:700 10.5px/1 'Figtree',sans-serif; letter-spacing:.14em; text-transform:uppercase; color:oklch(0.82 0.12 90)">Einkaufszettel</div>
+              <div style="margin-top:12px; font:400 26px/1.1 'Instrument Serif',serif; color:#fff"><span style="font-family:'JetBrains Mono',monospace; font-size:24px">18</span> Positionen</div>
+              <div style="margin-top:8px; font:14px/1.55 'Figtree',sans-serif; color:oklch(0.84 0.03 80)">Aus 8 geplanten Mahlzeiten, doppelte Zutaten sind zusammengefasst.</div>
+              <div style="margin-top:16px; height:44px; border-radius:999px; background:oklch(0.82 0.12 90); color:oklch(0.24 0.04 60); display:grid; place-items:center; font:700 14px/1 'Figtree',sans-serif; cursor:pointer">Zettel öffnen</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section style="display:flex; flex-direction:column; gap:28px; padding:56px 56px 96px; font-family:'Figtree',system-ui,sans-serif; color:oklch(0.26 0.04 45)">
+  <div style="max-width:900px">
+    <div style="font:700 12px/1 'Figtree',sans-serif; letter-spacing:.14em; text-transform:uppercase; color:oklch(0.56 0.17 32)">Design-Konzept · Runde 2 · privat, nicht Business</div>
+    <h1 style="margin:12px 0 0; font:400 44px/1.05 'Instrument Serif',Georgia,serif; letter-spacing:-0.01em">Zwei lebhafte Richtungen für dein Kochbuch</h1>
+    <p style="margin:14px 0 0; font:16px/1.65 'Figtree',sans-serif; color:oklch(0.42 0.03 45); text-wrap:pretty">Weg vom Business-Tool: <a href="#2a">2a</a> ist ein warmes Küchentisch-Magazin mit Serif-Titeln und großen Fotos, <a href="#2b">2b</a> ein sattes Abendküchen-Dunkel mit kräftigen Farbcodes und Wochenplan an der Seite, <a href="#2c">2c</a> ein Retro-Karteikasten mit Farbflächen statt Fotos und einem Würfel gegen Entscheidungsmüdigkeit. Alle Desktop und bedienbar: Kategorien filtern, Herz speichert.</p>
+  </div>
+
+  <div style="display:flex; flex-wrap:wrap; align-items:flex-start; gap:40px">
+
+    <div id="2a" style="width:1340px; flex:none; display:flex; flex-direction:column; gap:14px">
+      <div style="display:flex; align-items:baseline; gap:12px">
+        <span style="font:700 12px/22px 'JetBrains Mono',monospace; background:oklch(0.56 0.17 32); color:#fff; padding:0 9px; border-radius:999px">2a</span>
+        <div style="font:600 17px/1.2 'Figtree',sans-serif">Küchentisch — warmes Magazin</div>
+        <div style="font:14px/1.4 'Figtree',sans-serif; color:oklch(0.5 0.03 45)">Papierfarbener Grund, Serif-Titel, ein Rezept der Woche groß, Fotos tragen die Seite.</div>
+      </div>
+
+      <div style="height:1020px; overflow:hidden; border-radius:22px; border:1px solid oklch(0.86 0.02 80); box-shadow:0 30px 60px -30px oklch(0.4 0.05 50 / .45); background:oklch(0.968 0.018 85); position:relative">
+        <div style="position:absolute; inset:0; background-image:radial-gradient(oklch(0.62 0.05 50 / .09) 1px, transparent 1px); background-size:22px 22px; pointer-events:none"></div>
+
+        <header style="position:relative; height:78px; display:flex; align-items:center; gap:36px; padding:0 40px; border-bottom:1px solid oklch(0.88 0.02 80)">
+          <div style="display:flex; align-items:baseline; gap:2px">
+            <span style="font:400 30px/1 'Instrument Serif',serif; letter-spacing:-0.01em">Kochbuch</span>
+            <span style="width:7px; height:7px; border-radius:999px; background:oklch(0.56 0.17 32); display:inline-block; margin-left:4px"></span>
+          </div>
+          <nav style="display:flex; gap:26px; font:500 15px/1 'Figtree',sans-serif">
+            <span style="position:relative; padding-bottom:6px; border-bottom:2px solid oklch(0.56 0.17 32)">Rezepte</span>
+            <span style="color:oklch(0.48 0.03 45); cursor:pointer" style-hover="color:oklch(0.26 0.04 45)">Wochenplan</span>
+            <span style="color:oklch(0.48 0.03 45); cursor:pointer" style-hover="color:oklch(0.26 0.04 45)">Einkaufszettel</span>
+            <span style="color:oklch(0.48 0.03 45); cursor:pointer" style-hover="color:oklch(0.26 0.04 45)">Vorratskammer</span>
+          </nav>
+          <div style="flex:1"></div>
+          <div style="position:relative; width:280px">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="oklch(0.6 0.04 50)" stroke-width="2" stroke-linecap="round" style="position:absolute; left:14px; top:50%; transform:translateY(-50%)"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+            <input onInput="{{ onSearchA }}" placeholder="Wonach ist dir heute?" style="width:100%; height:42px; padding:0 16px 0 40px; border:1px solid oklch(0.86 0.02 80); border-radius:999px; background:#fff; font:15px/1 'Figtree',sans-serif; color:oklch(0.26 0.04 45); outline:none" style-focus="border-color:oklch(0.56 0.17 32)">
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; height:42px; padding:0 18px 0 6px; border-radius:999px; background:oklch(0.26 0.04 45); color:#fff; cursor:pointer" style-hover="background:oklch(0.2 0.04 45)">
+            <span style="width:30px; height:30px; border-radius:999px; background:oklch(0.56 0.17 32); display:grid; place-items:center">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14M12 5v14"></path></svg>
+            </span>
+            <span style="font:600 14px/1 'Figtree',sans-serif">Rezept anlegen</span>
+          </div>
+        </header>
+
+        <div style="position:relative; height:942px; overflow:auto; padding:34px 40px 60px">
+          <div style="display:grid; grid-template-columns:1.05fr .95fr; gap:40px; align-items:center; margin-bottom:38px; animation:rise .5s ease both">
+            <div>
+              <div style="display:inline-flex; align-items:center; gap:8px; font:700 11.5px/1 'Figtree',sans-serif; letter-spacing:.14em; text-transform:uppercase; color:oklch(0.56 0.17 32)">
+                <span style="width:26px; height:1.5px; background:oklch(0.56 0.17 32)"></span>{{ heroKicker }}
+              </div>
+              <h2 style="margin:16px 0 0; font:400 52px/1.05 'Instrument Serif',serif; letter-spacing:-0.015em; text-wrap:balance">Süßkartoffel-Auflauf mit Feta und Kreuzkümmel</h2>
+              <p style="margin:16px 0 0; max-width:520px; font:16.5px/1.6 'Figtree',sans-serif; color:oklch(0.42 0.03 45); text-wrap:pretty">Der Klassiker aus deinem Ordner „Aufläufe" — einmal vorgekocht, hält er zwei Abende. Diesmal mit etwas mehr Kreuzkümmel, so wie du es letztes Mal notiert hast.</p>
+              <div style="display:flex; align-items:center; gap:26px; margin-top:26px">
+                <sc-for list="{{ heroMeta }}" as="m" hint-placeholder-count="3">
+                  <div>
+                    <div style="font:700 26px/1 'JetBrains Mono',monospace; letter-spacing:-0.03em">{{ m.v }}</div>
+                    <div style="margin-top:5px; font:600 11.5px/1 'Figtree',sans-serif; letter-spacing:.1em; text-transform:uppercase; color:oklch(0.56 0.03 50)">{{ m.k }}</div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex; gap:12px; margin-top:30px">
+                <span style="display:inline-flex; align-items:center; gap:9px; height:50px; padding:0 24px; border-radius:999px; background:oklch(0.56 0.17 32); color:#fff; font:600 15.5px/1 'Figtree',sans-serif; cursor:pointer; box-shadow:0 10px 24px -12px oklch(0.56 0.17 32 / .8)" style-hover="background:oklch(0.48 0.17 32)">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v6a4 4 0 0 0 8 0V3M12 13v8"></path></svg>
+                  Jetzt kochen
+                </span>
+                <span style="display:inline-flex; align-items:center; gap:9px; height:50px; padding:0 22px; border-radius:999px; border:1.5px solid oklch(0.26 0.04 45); font:600 15.5px/1 'Figtree',sans-serif; cursor:pointer" style-hover="background:oklch(0.26 0.04 45); color:#fff">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="4"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+                  Auf Mittwoch legen
+                </span>
+              </div>
+            </div>
+            <div style="position:relative">
+              <div style="position:absolute; inset:18px -14px -18px 18px; border-radius:26px; background:oklch(0.86 0.09 110 / .5)"></div>
+              <div style="position:relative; height:380px; border-radius:26px; overflow:hidden; box-shadow:0 26px 50px -24px oklch(0.4 0.05 50 / .6)">
+                <image-slot id="v2a-hero" shape="rect" placeholder="Foto vom Auflauf"></image-slot>
+              </div>
+              <div style="position:absolute; bottom:-22px; left:-18px; transform:rotate(-6deg); background:#fff; border-radius:16px; padding:12px 16px; box-shadow:0 14px 30px -16px oklch(0.4 0.05 50 / .6)">
+                <div style="font:500 12.5px/1.3 'Figtree',sans-serif; color:oklch(0.5 0.03 45)">Schon <b style="font-family:'JetBrains Mono',monospace">7×</b> gekocht</div>
+                <div style="font:400 17px/1.2 'Instrument Serif',serif">Familienfavorit</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:14px; padding:22px 0 20px; border-top:1px solid oklch(0.88 0.02 80)">
+            <h3 style="margin:0; font:400 30px/1 'Instrument Serif',serif">Meine Sammlung</h3>
+            <span style="font:500 14px/1 'Figtree',sans-serif; color:oklch(0.56 0.03 50)"><b style="font-family:'JetBrains Mono',monospace">{{ countA }}</b> Rezepte</span>
+            <div style="flex:1"></div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end">
+              <sc-for list="{{ tagsA }}" as="t" hint-placeholder-count="6">
+                <span onClick="{{ t.onPick }}" style="height:34px; display:inline-flex; align-items:center; padding:0 15px; border-radius:999px; font:600 13.5px/1 'Figtree',sans-serif; cursor:pointer; border:1px solid {{ t.bd }}; background:{{ t.bg }}; color:{{ t.fg }}; transition:background .14s, border-color .14s" style-hover="border-color:oklch(0.56 0.17 32)">{{ t.name }}</span>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:26px">
+            <sc-for list="{{ cardsA }}" as="r" hint-placeholder-count="6">
+              <div style="animation:rise .5s ease both; animation-delay:{{ r.delay }}; background:#fff; border-radius:20px; overflow:hidden; box-shadow:0 14px 34px -24px oklch(0.4 0.05 50 / .7); cursor:pointer; transition:transform .16s ease, box-shadow .16s ease" style-hover="transform:translateY(-3px); box-shadow:0 24px 44px -24px oklch(0.4 0.05 50 / .8)">
+                <div style="position:relative; height:196px; background:oklch(0.92 0.02 80)">
+                  <image-slot id="{{ r.slot }}" shape="rect" placeholder="{{ r.title }}"></image-slot>
+                  <span style="position:absolute; top:12px; left:12px; height:28px; display:inline-flex; align-items:center; padding:0 12px; border-radius:999px; background:#fff; font:700 11.5px/1 'Figtree',sans-serif; letter-spacing:.06em; text-transform:uppercase; color:{{ r.hue }}">{{ r.collection }}</span>
+                  <span onClick="{{ r.onFav }}" style="position:absolute; top:10px; right:10px; width:34px; height:34px; border-radius:999px; background:#fff; display:grid; place-items:center; box-shadow:0 6px 14px -8px oklch(0.4 0.05 50 / .8)">
+                    <svg viewBox="0 0 24 24" width="17" height="17" fill="{{ r.favFill }}" stroke="{{ r.favStroke }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5C2 10.8 3.5 12.5 5 14l7 7Z"></path></svg>
+                  </span>
+                </div>
+                <div style="padding:18px 20px 20px">
+                  <div style="font:400 23px/1.2 'Instrument Serif',serif; letter-spacing:-0.01em; min-height:55px; text-wrap:pretty">{{ r.title }}</div>
+                  <div style="margin-top:6px; font:14px/1.5 'Figtree',sans-serif; color:oklch(0.52 0.03 48)">{{ r.sub }}</div>
+                  <div style="display:flex; align-items:center; gap:18px; margin-top:16px; padding-top:14px; border-top:1px dashed oklch(0.86 0.02 80); font:500 13.5px/1 'Figtree',sans-serif; color:oklch(0.42 0.03 45)">
+                    <span style="display:inline-flex; align-items:center; gap:6px">
+                      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="oklch(0.56 0.17 32)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3.5 2"></path></svg>
+                      <b style="font-family:'JetBrains Mono',monospace; font-weight:500">{{ r.time }}</b> Min
+                    </span>
+                    <span style="display:inline-flex; align-items:center; gap:6px">
+                      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="oklch(0.52 0.09 145)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11h16a8 8 0 0 1-16 0zM9 4c0 2 2 2 2 4"></path></svg>
+                      <b style="font-family:'JetBrains Mono',monospace; font-weight:500">{{ r.servings }}</b> Port.
+                    </span>
+                    <div style="flex:1"></div>
+                    <span style="font:600 13px/1 'Figtree',sans-serif; color:oklch(0.56 0.17 32)">{{ r.kcal }}</span>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="margin-top:34px; padding:26px 28px; border-radius:22px; background:oklch(0.26 0.04 45); color:oklch(0.94 0.02 80)">
+            <div style="display:flex; align-items:center; gap:14px; margin-bottom:18px">
+              <h3 style="margin:0; font:400 26px/1 'Instrument Serif',serif; color:#fff">Deine Woche</h3>
+              <span style="font:500 13.5px/1 'Figtree',sans-serif; color:oklch(0.78 0.03 80)">KW 39 · noch 2 Abende offen</span>
+              <div style="flex:1"></div>
+              <span style="font:600 13.5px/1 'Figtree',sans-serif; color:oklch(0.82 0.12 90); cursor:pointer">Einkaufszettel erzeugen →</span>
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:10px">
+              <sc-for list="{{ week }}" as="d" hint-placeholder-count="7">
+                <div style="border-radius:14px; padding:12px 13px; min-height:104px; background:{{ d.bg }}; border:1px {{ d.bdStyle }} {{ d.bd }}">
+                  <div style="font:600 11.5px/1 'Figtree',sans-serif; letter-spacing:.1em; text-transform:uppercase; color:{{ d.dayFg }}">{{ d.day }}</div>
+                  <div style="margin-top:9px; font:500 14px/1.35 'Figtree',sans-serif; color:{{ d.fg }}; text-wrap:pretty">{{ d.meal }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="2b" style="width:1340px; flex:none; display:flex; flex-direction:column; gap:14px">
+      <div style="display:flex; align-items:baseline; gap:12px">
+        <span style="font:700 12px/22px 'JetBrains Mono',monospace; background:oklch(0.3 0.04 150); color:oklch(0.86 0.16 95); padding:0 9px; border-radius:999px">2b</span>
+        <div style="font:600 17px/1.2 'Figtree',sans-serif">Abendküche — satt und direkt</div>
+        <div style="font:14px/1.4 'Figtree',sans-serif; color:oklch(0.5 0.03 45)">Dunkler Grund, Safran-Akzent, farbcodierte Kategorien, Wochenplan dauerhaft rechts sichtbar.</div>
+      </div>
+
+      <div style="height:1020px; display:flex; overflow:hidden; border-radius:22px; background:oklch(0.21 0.02 150); color:oklch(0.93 0.01 90); box-shadow:0 30px 60px -30px oklch(0.25 0.04 150 / .7); font-family:'Bricolage Grotesque','Figtree',sans-serif">
+
+        <aside style="width:84px; flex:none; background:oklch(0.17 0.02 150); display:flex; flex-direction:column; align-items:center; padding:22px 0; gap:10px">
+          <div style="width:40px; height:40px; border-radius:13px; background:oklch(0.82 0.16 85); display:grid; place-items:center; margin-bottom:16px">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="oklch(0.24 0.04 90)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h16v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM8 6l1 4M16 6l-1 4"></path></svg>
+          </div>
+          <sc-for list="{{ railB }}" as="n" hint-placeholder-count="5">
+            <div style="width:52px; display:flex; flex-direction:column; align-items:center; gap:5px; padding:9px 0; border-radius:14px; cursor:pointer; background:{{ n.bg }}; color:{{ n.fg }}" style-hover="background:oklch(0.26 0.03 150)">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.d }}"></path></svg>
+              <span style="font:600 9.5px/1 'Figtree',sans-serif; letter-spacing:.04em">{{ n.label }}</span>
+            </div>
+          </sc-for>
+          <div style="margin-top:auto; width:40px; height:40px; border-radius:999px; background:oklch(0.34 0.06 150); display:grid; place-items:center; font:700 13px/1 'Figtree',sans-serif; color:oklch(0.9 0.02 90)">TD</div>
+        </aside>
+
+        <div style="flex:1; min-width:0; display:flex; flex-direction:column; padding:34px 0 0 38px">
+          <div style="display:flex; align-items:flex-end; gap:28px; padding-right:38px">
+            <div>
+              <div style="font:700 11.5px/1 'Figtree',sans-serif; letter-spacing:.16em; text-transform:uppercase; color:oklch(0.82 0.16 85)">Dienstag, 21. September</div>
+              <h2 style="margin:12px 0 0; font:800 40px/1.05 'Bricolage Grotesque',sans-serif; letter-spacing:-0.03em; color:#fff">Was kochst du heute?</h2>
+            </div>
+            <div style="flex:1"></div>
+            <div style="position:relative; width:300px">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="oklch(0.62 0.02 150)" stroke-width="2" stroke-linecap="round" style="position:absolute; left:15px; top:50%; transform:translateY(-50%)"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+              <input onInput="{{ onSearchB }}" placeholder="Zutat oder Rezept" style="width:100%; height:46px; padding:0 16px 0 42px; border-radius:14px; border:1px solid oklch(0.3 0.02 150); background:oklch(0.25 0.02 150); color:#fff; font:15px/1 'Figtree',sans-serif; outline:none" style-focus="border-color:oklch(0.82 0.16 85)">
+            </div>
+            <div style="display:inline-flex; align-items:center; gap:9px; height:46px; padding:0 20px; border-radius:14px; background:oklch(0.82 0.16 85); color:oklch(0.22 0.04 90); font:700 14.5px/1 'Figtree',sans-serif; cursor:pointer" style-hover="background:oklch(0.88 0.16 90)">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 12h14M12 5v14"></path></svg>
+              Neues Rezept
+            </div>
+          </div>
+
+          <div style="display:flex; gap:9px; margin-top:26px; padding-right:38px; flex-wrap:wrap">
+            <sc-for list="{{ tagsB }}" as="t" hint-placeholder-count="7">
+              <span onClick="{{ t.onPick }}" style="height:36px; display:inline-flex; align-items:center; gap:8px; padding:0 15px; border-radius:12px; cursor:pointer; font:600 13.5px/1 'Figtree',sans-serif; background:{{ t.bg }}; color:{{ t.fg }}; transition:background .14s">
+                <span style="width:8px; height:8px; border-radius:3px; background:{{ t.hue }}"></span>{{ t.name }}
+              </span>
+            </sc-for>
+          </div>
+
+          <div style="flex:1; min-height:0; display:flex; gap:26px; margin-top:24px">
+            <div style="flex:1; min-width:0; overflow:auto; padding-bottom:36px">
+              <div style="display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:18px">
+                <sc-for list="{{ cardsB }}" as="r" hint-placeholder-count="9">
+                  <div style="animation:rise .45s ease both; animation-delay:{{ r.delay }}; background:oklch(0.25 0.02 150); border:1px solid oklch(0.29 0.02 150); border-radius:18px; overflow:hidden; cursor:pointer; transition:border-color .14s, transform .16s" style-hover="border-color:oklch(0.82 0.16 85); transform:translateY(-2px)">
+                    <div style="position:relative; height:132px; background:oklch(0.29 0.02 150)">
+                      <image-slot id="{{ r.slotB }}" shape="rect" placeholder="Foto"></image-slot>
+                      <span style="position:absolute; inset:auto 10px 10px auto; height:26px; display:inline-flex; align-items:center; gap:6px; padding:0 10px; border-radius:9px; background:oklch(0.17 0.02 150 / .86); color:oklch(0.9 0.02 90); font:700 12px/1 'JetBrains Mono',monospace">{{ r.time }} Min</span>
+                    </div>
+                    <div style="padding:14px 16px 16px">
+                      <div style="display:flex; align-items:center; gap:7px; font:700 10.5px/1 'Figtree',sans-serif; letter-spacing:.1em; text-transform:uppercase; color:{{ r.hue }}">
+                        <span style="width:7px; height:7px; border-radius:2px; background:{{ r.hue }}"></span>{{ r.collection }}
+                      </div>
+                      <div style="margin-top:9px; font:600 16.5px/1.25 'Bricolage Grotesque',sans-serif; letter-spacing:-0.015em; color:#fff; min-height:41px; text-wrap:pretty">{{ r.title }}</div>
+                      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:14px; padding-top:12px; border-top:1px solid oklch(0.3 0.02 150)">
+                        <span style="font:500 12.5px/1 'JetBrains Mono',monospace; color:oklch(0.72 0.02 150)">{{ r.ing }} Zutaten</span>
+                        <span onClick="{{ r.onFav }}" style="display:inline-flex; align-items:center; gap:7px; height:30px; padding:0 11px; border-radius:10px; background:{{ r.favBg }}; color:{{ r.favFg }}; font:600 12.5px/1 'Figtree',sans-serif">
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="{{ r.favFill2 }}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5C2 10.8 3.5 12.5 5 14l7 7Z"></path></svg>
+                          {{ r.favLabel }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="width:322px; flex:none; background:oklch(0.17 0.02 150); border-radius:20px 0 0 0; padding:24px 22px; overflow:auto">
+              <div style="display:flex; align-items:baseline; gap:10px">
+                <h3 style="margin:0; font:800 20px/1 'Bricolage Grotesque',sans-serif; letter-spacing:-0.02em; color:#fff">Wochenplan</h3>
+                <span style="font:500 12.5px/1 'JetBrains Mono',monospace; color:oklch(0.7 0.02 150)">KW 39</span>
+              </div>
+              <div style="margin-top:16px; display:flex; flex-direction:column; gap:9px">
+                <sc-for list="{{ week }}" as="d" hint-placeholder-count="7">
+                  <div style="display:grid; grid-template-columns:44px 1fr; gap:12px; align-items:center; padding:11px 13px; border-radius:13px; background:{{ d.bgB }}; border:1px {{ d.bdStyle }} {{ d.bdB }}">
+                    <div style="font:700 12px/1 'JetBrains Mono',monospace; color:{{ d.dayFgB }}">{{ d.day }}</div>
+                    <div style="font:500 13.5px/1.35 'Figtree',sans-serif; color:{{ d.fgB }}; text-wrap:pretty">{{ d.meal }}</div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="margin-top:20px; padding:16px; border-radius:15px; background:oklch(0.25 0.02 150)">
+                <div style="font:700 11px/1 'Figtree',sans-serif; letter-spacing:.12em; text-transform:uppercase; color:oklch(0.82 0.16 85)">Einkaufszettel</div>
+                <div style="margin-top:10px; font:14px/1.5 'Figtree',sans-serif; color:oklch(0.86 0.01 150)"><b style="font-family:'JetBrains Mono',monospace">18</b> Positionen aus <b style="font-family:'JetBrains Mono',monospace">5</b> Rezepten — Doppelte sind zusammengefasst.</div>
+                <div style="margin-top:14px; height:40px; border-radius:11px; background:oklch(0.82 0.16 85); color:oklch(0.22 0.04 90); display:grid; place-items:center; font:700 13.5px/1 'Figtree',sans-serif; cursor:pointer">Zettel öffnen</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="2c" style="width:1340px; flex:none; display:flex; flex-direction:column; gap:14px">
+      <div style="display:flex; align-items:baseline; gap:12px">
+        <span style="font:700 12px/22px 'JetBrains Mono',monospace; background:oklch(0.55 0.15 45); color:oklch(0.95 0.04 90); padding:0 9px; border-radius:999px">2c</span>
+        <div style="font:600 17px/1.2 'Figtree',sans-serif">Karteikasten — Retro-Kochbuch, laut und haptisch</div>
+        <div style="font:14px/1.4 'Figtree',sans-serif; color:oklch(0.5 0.03 45)">Farbflächen statt Fotos, Rezeptkarten mit Linien und leichter Schräglage, „Würfeln" entscheidet, wenn du nicht weißt, was du kochen sollst.</div>
+      </div>
+
+      <div style="height:1020px; overflow:hidden; border-radius:22px; background:oklch(0.93 0.035 90); color:oklch(0.22 0.02 60); box-shadow:0 30px 60px -30px oklch(0.4 0.06 60 / .5); font-family:'Karla',sans-serif; display:flex; flex-direction:column">
+
+        <div style="flex:none; background:oklch(0.55 0.15 45); padding:22px 36px 0">
+          <div style="display:flex; align-items:center; gap:20px">
+            <div style="font:400 26px/1 'Archivo Black',sans-serif; letter-spacing:-0.02em; color:oklch(0.96 0.03 90); text-transform:uppercase">Kochbuch</div>
+            <div style="font:600 13px/1 'Karla',sans-serif; letter-spacing:.14em; text-transform:uppercase; color:oklch(0.86 0.08 80)">Karteikasten von Thorsten</div>
+            <div style="flex:1"></div>
+            <div style="position:relative; width:290px">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="oklch(0.55 0.15 45)" stroke-width="2.4" stroke-linecap="round" style="position:absolute; left:14px; top:50%; transform:translateY(-50%)"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+              <input onInput="{{ onSearchC }}" placeholder="Karte suchen" style="width:100%; height:44px; padding:0 16px 0 40px; border:3px solid oklch(0.22 0.02 60); border-radius:0; background:oklch(0.96 0.03 90); font:500 15px/1 'Karla',sans-serif; color:oklch(0.22 0.02 60); outline:none">
+            </div>
+            <div onClick="{{ onDice }}" style="display:inline-flex; align-items:center; gap:10px; height:44px; padding:0 20px; border:3px solid oklch(0.22 0.02 60); background:oklch(0.80 0.14 85); color:oklch(0.22 0.02 60); font:700 14.5px/1 'Karla',sans-serif; letter-spacing:.04em; text-transform:uppercase; cursor:pointer; box-shadow:4px 4px 0 oklch(0.22 0.02 60)" style-hover="transform:translate(2px,2px); box-shadow:2px 2px 0 oklch(0.22 0.02 60)">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"></rect><circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"></circle><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"></circle><circle cx="12" cy="12" r="1.2" fill="currentColor"></circle></svg>
+              Würfeln
+            </div>
+          </div>
+          <div style="display:flex; align-items:flex-end; gap:4px; margin-top:22px">
+            <sc-for list="{{ tabsC }}" as="t" hint-placeholder-count="8">
+              <div onClick="{{ t.onPick }}" style="padding:0 16px; height:{{ t.h }}; display:flex; align-items:center; border:3px solid oklch(0.22 0.02 60); border-bottom:none; border-radius:10px 10px 0 0; cursor:pointer; background:{{ t.bg }}; color:{{ t.fg }}; font:700 13px/1 'Karla',sans-serif; letter-spacing:.06em; text-transform:uppercase">{{ t.name }}</div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="flex:1; min-height:0; display:flex; border-top:3px solid oklch(0.22 0.02 60)">
+          <div style="flex:1; min-width:0; overflow:auto; padding:30px 36px 44px">
+            <div style="display:flex; align-items:center; gap:16px; margin-bottom:22px">
+              <div style="font:400 34px/1 'Archivo Black',sans-serif; letter-spacing:-0.03em; text-transform:uppercase">{{ labelC }}</div>
+              <div style="height:3px; flex:1; background:oklch(0.22 0.02 60)"></div>
+              <div style="font:700 14px/1 'JetBrains Mono',monospace">{{ countC }} Karten</div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:22px">
+              <sc-for list="{{ cardsC }}" as="r" hint-placeholder-count="9">
+                <div onClick="{{ r.onPick }}" style="animation:rise .4s ease both; animation-delay:{{ r.delay }}; position:relative; background:{{ r.cardBg }}; border:3px solid oklch(0.22 0.02 60); box-shadow:{{ r.shadow }}; transform:rotate({{ r.rot }}); cursor:pointer; transition:transform .16s ease, box-shadow .16s ease" style-hover="transform:rotate(0deg) translateY(-3px); box-shadow:10px 10px 0 oklch(0.22 0.02 60)">
+                  <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 13px; background:{{ r.hue }}; border-bottom:3px solid oklch(0.22 0.02 60)">
+                    <span style="font:700 11.5px/1 'Karla',sans-serif; letter-spacing:.12em; text-transform:uppercase; color:oklch(0.18 0.02 60)">{{ r.collection }}</span>
+                    <span style="font:700 12px/1 'JetBrains Mono',monospace; color:oklch(0.18 0.02 60)">{{ r.no }}</span>
+                  </div>
+                  <div style="padding:16px 18px 18px; background-image:repeating-linear-gradient(oklch(0.22 0.02 60 / 0) 0 27px, oklch(0.22 0.02 60 / .13) 27px 28px)">
+                    <div style="font:400 21px/1.25 'Archivo Black',sans-serif; letter-spacing:-0.02em; min-height:52px; text-wrap:pretty">{{ r.title }}</div>
+                    <div style="margin-top:12px; font:500 14px/1.6 'Karla',sans-serif; color:oklch(0.36 0.02 60)">{{ r.sub }}</div>
+                    <div style="display:flex; align-items:flex-end; gap:20px; margin-top:16px; padding-top:14px; border-top:2px dashed oklch(0.22 0.02 60 / .4)">
+                      <sc-for list="{{ r.stats }}" as="s" hint-placeholder-count="3">
+                        <div>
+                          <div style="font:700 19px/1 'JetBrains Mono',monospace">{{ s.v }}</div>
+                          <div style="margin-top:4px; font:700 10px/1 'Karla',sans-serif; letter-spacing:.1em; text-transform:uppercase; color:oklch(0.45 0.02 60)">{{ s.k }}</div>
+                        </div>
+                      </sc-for>
+                      <div style="flex:1"></div>
+                      <span onClick="{{ r.onFav }}" style="width:34px; height:34px; border:3px solid oklch(0.22 0.02 60); background:{{ r.favBg }}; display:grid; place-items:center">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="{{ r.favFill }}" stroke="oklch(0.22 0.02 60)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5C2 10.8 3.5 12.5 5 14l7 7Z"></path></svg>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="width:346px; flex:none; border-left:3px solid oklch(0.22 0.02 60); background:oklch(0.96 0.03 90); padding:26px 26px 36px; overflow:auto">
+            <div style="border:3px solid oklch(0.22 0.02 60); background:oklch(0.80 0.14 85); box-shadow:6px 6px 0 oklch(0.22 0.02 60)">
+              <div style="padding:9px 14px; border-bottom:3px solid oklch(0.22 0.02 60); font:700 11.5px/1 'Karla',sans-serif; letter-spacing:.14em; text-transform:uppercase">Gewürfelt für heute</div>
+              <div style="padding:18px">
+                <div style="height:150px; border:3px solid oklch(0.22 0.02 60); background:oklch(0.96 0.03 90); position:relative">
+                  <image-slot id="v2c-dice" shape="rect" placeholder="Foto oder Farbfläche"></image-slot>
+                </div>
+                <div style="margin-top:14px; font:400 24px/1.2 'Archivo Black',sans-serif; letter-spacing:-0.02em; text-wrap:pretty">{{ diceTitle }}</div>
+                <div style="margin-top:8px; font:500 14px/1.55 'Karla',sans-serif; color:oklch(0.32 0.02 60)">{{ diceSub }}</div>
+                <div style="display:flex; gap:22px; margin-top:16px">
+                  <sc-for list="{{ diceStats }}" as="s" hint-placeholder-count="3">
+                    <div>
+                      <div style="font:700 18px/1 'JetBrains Mono',monospace">{{ s.v }}</div>
+                      <div style="margin-top:4px; font:700 10px/1 'Karla',sans-serif; letter-spacing:.1em; text-transform:uppercase; color:oklch(0.45 0.02 60)">{{ s.k }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:9px; margin-top:18px">
+                  <div style="height:44px; border:3px solid oklch(0.22 0.02 60); background:oklch(0.55 0.15 45); color:oklch(0.96 0.03 90); display:grid; place-items:center; font:700 14px/1 'Karla',sans-serif; letter-spacing:.06em; text-transform:uppercase; cursor:pointer">Kochmodus starten</div>
+                  <div onClick="{{ onDice }}" style="height:40px; border:3px solid oklch(0.22 0.02 60); background:transparent; display:grid; place-items:center; font:700 13px/1 'Karla',sans-serif; letter-spacing:.06em; text-transform:uppercase; cursor:pointer">Nochmal würfeln</div>
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-top:26px; font:400 20px/1 'Archivo Black',sans-serif; letter-spacing:-0.02em; text-transform:uppercase">Diese Woche</div>
+            <div style="margin-top:14px; display:flex; flex-direction:column; gap:0">
+              <sc-for list="{{ week }}" as="d" hint-placeholder-count="7">
+                <div style="display:grid; grid-template-columns:38px 1fr; gap:12px; align-items:center; padding:11px 2px; border-bottom:2px solid oklch(0.22 0.02 60 / .25)">
+                  <div style="font:700 13px/1 'JetBrains Mono',monospace; color:{{ d.dayFgC }}">{{ d.day }}</div>
+                  <div style="font:500 14px/1.35 'Karla',sans-serif; color:{{ d.fgC }}">{{ d.meal }}</div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="margin-top:20px; font:500 13.5px/1.6 'Karla',sans-serif; color:oklch(0.42 0.02 60)">Zwei Abende sind offen — würfle sie aus oder zieh eine Karte hierher.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:2000,&quot;height&quot;:1200}}">
+const HUES = {
+  'Aufläufe':   'oklch(0.66 0.15 60)',
+  'Fleisch':    'oklch(0.60 0.17 25)',
+  'Nudeln':     'oklch(0.66 0.14 85)',
+  'Leicht':     'oklch(0.60 0.12 150)',
+  'Suppen':     'oklch(0.62 0.13 40)',
+  'Fisch':      'oklch(0.62 0.10 210)',
+  'Wok':        'oklch(0.58 0.14 320)'
+};
+
+const RECIPES = [
+  { t: 'Süßkartoffel-Auflauf mit Feta', c: 'Aufläufe', time: 55, serv: 4, kcal: 725, ing: 10, cooked: 7, sub: 'Ofen 200 °C · hält zwei Abende' },
+  { t: 'Rumpsteak im Senfmantel', c: 'Fleisch', time: 170, serv: 2, kcal: 540, ing: 12, cooked: 2, sub: 'Niedrigtemperatur · Dijon' },
+  { t: 'Königsberger Klopse', c: 'Fleisch', time: 50, serv: 4, kcal: 480, ing: 13, cooked: 1, sub: 'Kapern · weiße Sauce' },
+  { t: 'Spaghetti mit Safran und Calamaretti', c: 'Nudeln', time: 30, serv: 2, kcal: 610, ing: 10, cooked: 4, sub: 'Weißwein · Safranfäden' },
+  { t: 'Pico de Gallo', c: 'Leicht', time: 30, serv: 6, kcal: 90, ing: 6, cooked: 5, sub: 'Roh · Limette · Koriander' },
+  { t: 'Kürbissuppe mit Ingwer', c: 'Suppen', time: 40, serv: 4, kcal: 240, ing: 10, cooked: 3, sub: 'Hokkaido · Kokosmilch' },
+  { t: 'Kabeljau auf Blattspinat', c: 'Fisch', time: 35, serv: 2, kcal: 380, ing: 9, cooked: 2, sub: 'Sanft gegart bei 140 °C' },
+  { t: 'Wok-Gemüse mit Erdnusssauce', c: 'Wok', time: 25, serv: 3, kcal: 430, ing: 11, cooked: 6, sub: 'Feierabend-Schnellgericht' },
+  { t: 'Linseneintopf mit Mettenden', c: 'Suppen', time: 75, serv: 6, kcal: 520, ing: 14, cooked: 3, sub: 'Sonntagstopf · friert gut ein' }
+];
+
+const DETAIL = {
+  t: 'Süßkartoffel-Auflauf mit Feta und Kreuzkümmel',
+  c: 'Aufläufe',
+  base: 4,
+  time: 55,
+  active: 25,
+  kcal: 725,
+  cooked: 7,
+  src: 'eatthis.de',
+  note: 'Letztes Mal notiert: Kreuzkümmel verdoppeln, Feta erst in den letzten 10 Minuten drauf.',
+  tags: ['Ofengericht', 'Meal Prep', 'Kindertauglich'],
+  ings: [
+    { n: 'Süßkartoffeln', a: 800, u: 'g' },
+    { n: 'Rinderhackfleisch', a: 500, u: 'g' },
+    { n: 'Feta', a: 200, u: 'g' },
+    { n: 'Zwiebel', a: 1, u: 'große' },
+    { n: 'Passierte Tomaten', a: 400, u: 'g' },
+    { n: 'Knoblauch', a: 2, u: 'Zehen' },
+    { n: 'Kreuzkümmel, gemahlen', a: 2, u: 'TL' },
+    { n: 'Olivenöl', a: 3, u: 'EL' },
+    { n: 'Petersilie', a: 0.5, u: 'Bund' },
+    { n: 'Salz, Pfeffer', a: 0, u: 'nach Gefühl' }
+  ],
+  steps: [
+    { h: 'Vorbereiten', t: 'Ofen auf 200 °C Ober-/Unterhitze vorheizen. Süßkartoffeln schälen und in 1 cm dicke Scheiben schneiden.', min: 10 },
+    { h: 'Vorkochen', t: 'Die Scheiben in Salzwasser 8 Minuten vorkochen, abgießen und kurz ausdampfen lassen.', min: 8 },
+    { h: 'Hackfleisch anbraten', t: 'Zwiebel und Knoblauch in Olivenöl anschwitzen, Hackfleisch zugeben und kräftig anbraten. Mit Kreuzkümmel, Salz und Pfeffer würzen, passierte Tomaten angießen und 5 Minuten einkochen.', min: 12 },
+    { h: 'Schichten', t: 'Süßkartoffeln und Hackfleischsauce abwechselnd in die Auflaufform schichten, oben mit Kartoffeln abschließen.', min: 5 },
+    { h: 'Backen', t: '25 Minuten backen, dann Feta darüber zerbröseln und weitere 10 Minuten goldbraun überbacken. Mit Petersilie bestreuen.', min: 35 }
+  ]
+};
+
+const PLAN = [
+  { day: 'Mo', date: '22.09.', meals: ['', 'Kürbissuppe mit Ingwer', 'Linseneintopf mit Mettenden'] },
+  { day: 'Di', date: '23.09.', meals: ['', '', 'Wok-Gemüse mit Erdnusssauce'] },
+  { day: 'Mi', date: '24.09.', meals: ['', 'Pico de Gallo', 'Süßkartoffel-Auflauf mit Feta'] },
+  { day: 'Do', date: '25.09.', meals: ['', '', ''] },
+  { day: 'Fr', date: '26.09.', meals: ['', '', 'Spaghetti mit Safran und Calamaretti'] },
+  { day: 'Sa', date: '27.09.', meals: ['', 'Kabeljau auf Blattspinat', 'Rumpsteak im Senfmantel'] },
+  { day: 'So', date: '28.09.', meals: ['', '', ''] }
+];
+
+const MEALS = ['Frühstück', 'Mittag', 'Abend'];
+
+const WEEK = [
+  { day: 'Mo', meal: 'Linseneintopf' },
+  { day: 'Di', meal: 'Wok-Gemüse' },
+  { day: 'Mi', meal: 'Süßkartoffel-Auflauf' },
+  { day: 'Do', meal: 'offen' },
+  { day: 'Fr', meal: 'Spaghetti Safran' },
+  { day: 'Sa', meal: 'Rumpsteak' },
+  { day: 'So', meal: 'offen' }
+];
+
+class Component extends DCLogic {
+  state = { qA: '', qB: '', qC: '', catsA: {}, catB: 'Alle', catC: 'Alle', dice: 3, serv: 4, step: 2, checked: {}, slot: '', favs: { 'Süßkartoffel-Auflauf mit Feta': true, 'Pico de Gallo': true } };
+
+  pickA() {
+    const s = this.state.qA.trim().toLowerCase();
+    const on = Object.keys(this.state.catsA).filter(k => this.state.catsA[k]);
+    return RECIPES.filter(r => (!on.length || on.includes(r.c)) &&
+      (!s || r.t.toLowerCase().includes(s) || r.sub.toLowerCase().includes(s)));
+  }
+
+  pick(q, cat) {
+    const s = q.trim().toLowerCase();
+    return RECIPES.filter(r => (cat === 'Alle' || r.c === cat) &&
+      (!s || r.t.toLowerCase().includes(s) || r.sub.toLowerCase().includes(s)));
+  }
+
+  tags(which) {
+    const cur = which === 'A' ? this.state.catA : which === 'C' ? this.state.catC : this.state.catB;
+    return ['Alle', ...Object.keys(HUES)].map(n => ({
+      name: n === 'Alle' ? 'Alles' : n,
+      hue: n === 'Alle' ? 'oklch(0.7 0.02 150)' : HUES[n],
+      on: cur === n,
+      onPick: () => this.setState(which === 'A' ? { catA: n } : which === 'C' ? { catC: n } : { catB: n })
+    }));
+  }
+
+  renderVals() {
+    const fav = t => !!this.state.favs[t];
+    const toggle = t => () => this.setState(s => ({ favs: { ...s.favs, [t]: !s.favs[t] } }));
+    const listA = this.pickA();
+    const onA = Object.keys(this.state.catsA).filter(k => this.state.catsA[k]);
+    const listB = this.pick(this.state.qB, this.state.catB);
+    const listC = this.pick(this.state.qC, this.state.catC);
+    const dice = RECIPES[this.state.dice] || RECIPES[0];
+    const slug = t => t.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 22);
+    const factor = this.state.serv / DETAIL.base;
+    const fmt = n => {
+      const v = Math.round(n * 100) / 100;
+      return String(v).replace('.', ',');
+    };
+    const kcalScaled = DETAIL.kcal;
+    const step = DETAIL.steps[this.state.step] || DETAIL.steps[0];
+    const featured = RECIPES.reduce((a, b) => ((b.cooked || 0) > (a.cooked || 0) ? b : a), RECIPES[0]);
+
+    return {
+      onSearchA: e => this.setState({ qA: e.target.value }),
+      onSearchB: e => this.setState({ qB: e.target.value }),
+      countA: listA.length,
+
+      heroKicker: 'Rezept der Woche · automatisch: ' + featured.cooked + '× gekocht',
+      heroMeta: [
+        { v: '55 Min', k: 'Gesamt' },
+        { v: '4', k: 'Portionen' },
+        { v: '725', k: 'kcal / Portion' }
+      ],
+
+      tagsA: ['Alle', ...Object.keys(HUES)].map(n => {
+        const on = n === 'Alle' ? !onA.length : !!this.state.catsA[n];
+        return {
+          name: n === 'Alle' ? 'Alles' : n,
+          onPick: n === 'Alle'
+            ? () => this.setState({ catsA: {} })
+            : () => this.setState(s => ({ catsA: { ...s.catsA, [n]: !s.catsA[n] } })),
+          bg: on ? 'oklch(0.26 0.04 45)' : 'transparent',
+          fg: on ? '#fff' : 'oklch(0.4 0.03 45)',
+          bd: on ? 'oklch(0.26 0.04 45)' : 'oklch(0.86 0.02 80)'
+        };
+      }),
+
+      tagsB: this.tags('B').map(t => ({
+        name: t.name,
+        hue: t.hue,
+        onPick: t.onPick,
+        bg: t.on ? 'oklch(0.32 0.03 150)' : 'oklch(0.25 0.02 150)',
+        fg: t.on ? '#fff' : 'oklch(0.78 0.02 150)'
+      })),
+
+      cardsA: listA.slice(0, 6).map((r, i) => ({
+        title: r.t,
+        sub: r.sub,
+        slot: 'v2a-' + slug(r.t),
+        collection: r.c,
+        hue: HUES[r.c],
+        time: r.time,
+        servings: r.serv,
+        kcal: r.kcal + ' kcal',
+        delay: (i * 60) + 'ms',
+        favFill: fav(r.t) ? 'oklch(0.56 0.17 32)' : 'none',
+        favStroke: fav(r.t) ? 'oklch(0.56 0.17 32)' : 'oklch(0.55 0.03 45)',
+        onFav: toggle(r.t)
+      })),
+
+      cardsB: listB.map((r, i) => ({
+        title: r.t,
+        slotB: 'v2b-' + slug(r.t),
+        collection: r.c,
+        hue: HUES[r.c],
+        time: r.time,
+        ing: r.ing,
+        delay: (i * 45) + 'ms',
+        favBg: fav(r.t) ? 'oklch(0.82 0.16 85)' : 'oklch(0.29 0.02 150)',
+        favFg: fav(r.t) ? 'oklch(0.24 0.04 90)' : 'oklch(0.78 0.02 150)',
+        favFill2: fav(r.t) ? 'currentColor' : 'none',
+        favLabel: fav(r.t) ? 'Gemerkt' : 'Merken',
+        onFav: toggle(r.t)
+      })),
+
+      detailTitle: DETAIL.t,
+      detailCollection: DETAIL.c,
+      detailHue: HUES[DETAIL.c],
+      detailNote: DETAIL.note,
+      detailSource: DETAIL.src,
+      detailTags: DETAIL.tags,
+      detailMeta: [
+        { v: DETAIL.time + ' Min', k: 'Gesamt' },
+        { v: DETAIL.active + ' Min', k: 'Arbeitszeit' },
+        { v: kcalScaled, k: 'kcal / Portion' },
+        { v: DETAIL.cooked + '×', k: 'Gekocht' }
+      ],
+      servings: this.state.serv,
+      onMinus: () => this.setState(s => ({ serv: Math.max(1, s.serv - 1) })),
+      onPlus: () => this.setState(s => ({ serv: Math.min(12, s.serv + 1) })),
+      ings: DETAIL.ings.map((i, idx) => {
+        const done = !!this.state.checked[idx];
+        const amt = i.a ? fmt(i.a * factor) + ' ' + i.u : i.u;
+        return {
+          name: i.n,
+          amount: amt,
+          fg: done ? 'oklch(0.66 0.02 50)' : 'oklch(0.26 0.04 45)',
+          deco: done ? 'line-through' : 'none',
+          boxBg: done ? 'oklch(0.56 0.17 32)' : 'transparent',
+          boxBd: done ? 'oklch(0.56 0.17 32)' : 'oklch(0.8 0.02 80)',
+          tickOpacity: done ? '1' : '0',
+          onToggle: () => this.setState(s => ({ checked: { ...s.checked, [idx]: !s.checked[idx] } }))
+        };
+      }),
+      steps: DETAIL.steps.map((s, i) => ({
+        no: String(i + 1).padStart(2, '0'),
+        h: s.h,
+        t: s.t,
+        min: s.min + ' Min'
+      })),
+      checkedCount: Object.keys(this.state.checked).filter(k => this.state.checked[k]).length,
+
+      cookStepNo: String(this.state.step + 1).padStart(2, '0'),
+      cookStepOf: DETAIL.steps.length,
+      cookHead: step.h,
+      cookText: step.t,
+      cookTimer: String(step.min).padStart(2, '0') + ':00',
+      cookIngs: DETAIL.ings.slice(0, 6).map(i => ({
+        name: i.n,
+        amount: i.a ? fmt(i.a * factor) + ' ' + i.u : i.u
+      })),
+      cookRail: DETAIL.steps.map((s, i) => ({
+        no: String(i + 1).padStart(2, '0'),
+        h: s.h,
+        bg: i === this.state.step ? 'oklch(0.36 0.05 45)' : 'transparent',
+        fg: i === this.state.step ? '#fff' : i < this.state.step ? 'oklch(0.72 0.05 90)' : 'oklch(0.6 0.03 60)',
+        dot: i < this.state.step ? 'oklch(0.82 0.12 90)' : i === this.state.step ? 'oklch(0.56 0.17 32)' : 'oklch(0.42 0.03 50)',
+        onPick: () => this.setState({ step: i })
+      })),
+      onPrev: () => this.setState(s => ({ step: Math.max(0, s.step - 1) })),
+      onNext: () => this.setState(s => ({ step: Math.min(DETAIL.steps.length - 1, s.step + 1) })),
+      progress: Math.round(((this.state.step + 1) / DETAIL.steps.length) * 100) + '%',
+
+      rowsPlan: MEALS.map((label, mi) => ({
+        label,
+        cells: PLAN.map(d => {
+          const title = d.meals[mi];
+          const rec = RECIPES.find(r => r.t === title);
+          const key = d.day + mi;
+          const active = this.state.slot === key;
+          return {
+            title: title || 'frei',
+            collection: rec ? rec.c : 'offen',
+            time: rec ? rec.time + ' Min' : 'Rezept wählen',
+            hue: rec ? HUES[rec.c] : 'oklch(0.72 0.02 60)',
+            bg: title ? '#fff' : active ? 'oklch(0.94 0.045 85)' : 'transparent',
+            bd: title ? 'oklch(0.92 0.015 80)' : active ? 'oklch(0.56 0.17 32)' : 'oklch(0.85 0.02 80)',
+            bdStyle: title ? 'solid' : 'dashed',
+            shadow: title ? '0 12px 26px -22px oklch(0.4 0.05 50 / .8)' : 'none',
+            fg: title ? 'oklch(0.26 0.04 45)' : 'oklch(0.58 0.03 55)',
+            titleFont: title ? '400 17px/1.25 \'Instrument Serif\',serif' : '500 14px/1.3 \'Figtree\',sans-serif',
+            onPick: () => this.setState({ slot: key })
+          };
+        })
+      })),
+      mealLabels: MEALS.map(m => ({ name: m })),
+      planDays: PLAN.map(d => ({
+        day: d.day,
+        date: d.date,
+        slots: d.meals.map((m, mi) => {
+          const key = d.day + mi;
+          const rec = RECIPES.find(r => r.t === m);
+          const active = this.state.slot === key;
+          return {
+            filled: !!m,
+            title: m || 'frei',
+            time: rec ? rec.time + ' Min' : 'Rezept wählen',
+            hue: rec ? HUES[rec.c] : 'oklch(0.7 0.02 60)',
+            bg: m ? '#fff' : active ? 'oklch(0.93 0.05 85)' : 'transparent',
+            bd: m ? 'transparent' : active ? 'oklch(0.56 0.17 32)' : 'oklch(0.84 0.02 80)',
+            bdStyle: m ? 'solid' : 'dashed',
+            fg: m ? 'oklch(0.26 0.04 45)' : 'oklch(0.58 0.03 55)',
+            onPick: () => this.setState({ slot: key })
+          };
+        })
+      })),
+      slotHint: this.state.slot ? 'Slot gewählt — Rezept aus der Liste übernehmen' : 'Leeren Slot antippen, dann Rezept wählen',
+      suggestions: RECIPES.slice(0, 5).map(r => ({
+        title: r.t,
+        time: r.time + ' Min',
+        hue: HUES[r.c],
+        collection: r.c
+      })),
+
+      onSearchC: e => this.setState({ qC: e.target.value }),
+      onDice: () => this.setState({ dice: Math.floor(Math.random() * RECIPES.length) }),
+      labelC: this.state.catC === 'Alle' ? 'Alle Karten' : this.state.catC,
+      countC: listC.length,
+
+      tabsC: this.tags('C').map(t => ({
+        name: t.name,
+        onPick: t.onPick,
+        h: t.on ? '44px' : '36px',
+        bg: t.on ? 'oklch(0.93 0.035 90)' : t.hue,
+        fg: 'oklch(0.18 0.02 60)'
+      })),
+
+      cardsC: listC.map((r, i) => ({
+        title: r.t,
+        sub: r.sub,
+        collection: r.c,
+        no: 'Nr. ' + String(RECIPES.indexOf(r) + 1).padStart(2, '0'),
+        hue: HUES[r.c],
+        cardBg: 'oklch(0.96 0.03 90)',
+        rot: [-1.2, 0.8, -0.6, 1.1, -0.9, 0.5][i % 6] + 'deg',
+        shadow: '6px 6px 0 oklch(0.22 0.02 60)',
+        delay: (i * 45) + 'ms',
+        stats: [
+          { v: r.time, k: 'Minuten' },
+          { v: r.serv, k: 'Portionen' },
+          { v: r.ing, k: 'Zutaten' }
+        ],
+        favBg: fav(r.t) ? 'oklch(0.80 0.14 85)' : 'transparent',
+        favFill: fav(r.t) ? 'oklch(0.55 0.15 45)' : 'none',
+        onFav: toggle(r.t),
+        onPick: () => this.setState({ dice: RECIPES.indexOf(r) })
+      })),
+
+      diceTitle: dice.t,
+      diceSub: dice.sub,
+      diceStats: [
+        { v: dice.time, k: 'Minuten' },
+        { v: dice.serv, k: 'Portionen' },
+        { v: dice.kcal, k: 'kcal' }
+      ],
+
+      week: WEEK.map(d => {
+        const open = d.meal === 'offen';
+        return {
+          day: d.day,
+          meal: open ? 'noch offen' : d.meal,
+          bg: open ? 'transparent' : 'oklch(0.32 0.04 45)',
+          bd: open ? 'oklch(0.44 0.03 50)' : 'transparent',
+          bdStyle: open ? 'dashed' : 'solid',
+          dayFg: open ? 'oklch(0.7 0.03 60)' : 'oklch(0.82 0.12 90)',
+          fg: open ? 'oklch(0.72 0.03 60)' : '#fff',
+          bgB: open ? 'transparent' : 'oklch(0.25 0.02 150)',
+          bdB: open ? 'oklch(0.34 0.02 150)' : 'transparent',
+          dayFgB: open ? 'oklch(0.6 0.02 150)' : 'oklch(0.82 0.16 85)',
+          fgB: open ? 'oklch(0.62 0.02 150)' : '#fff',
+          dayFgC: open ? 'oklch(0.5 0.02 60)' : 'oklch(0.55 0.15 45)',
+          fgC: open ? 'oklch(0.5 0.02 60)' : 'oklch(0.22 0.02 60)'
+        };
+      })
+    };
+  }
+}
+
+</script>
+</body>
+</html>
