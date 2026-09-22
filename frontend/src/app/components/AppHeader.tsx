@@ -1,6 +1,5 @@
-import { Languages, LogOut, Menu, Plus, Search, Settings, Smartphone } from 'lucide-react';
+import { Download, Languages, LogOut, Menu, Plus, Search, Settings, Smartphone } from 'lucide-react';
 import type { User } from '@/app/types/user';
-import { Button } from '@/app/components/ui/button';
 import { cn } from '@/app/components/ui/utils';
 import {
   DropdownMenu,
@@ -10,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
+import { CreateRecipeMenu } from '@/app/components/CreateRecipeMenu';
 import { useTranslation } from '@/app/i18n';
 
 export type NavTarget = 'recipes' | 'planner' | 'shopping';
@@ -21,6 +21,7 @@ interface AppHeaderProps {
   onQueryChange: (query: string) => void;
   onNavigate: (target: NavTarget) => void;
   onCreateNew: () => void;
+  onImport: () => void;
   onOpenAdmin: () => void;
   onLogout: () => void;
 }
@@ -33,6 +34,7 @@ export function AppHeader({
   onQueryChange,
   onNavigate,
   onCreateNew,
+  onImport,
   onOpenAdmin,
   onLogout,
 }: AppHeaderProps) {
@@ -95,12 +97,7 @@ export function AppHeader({
         />
       </div>
 
-      <Button variant="ink" size="pill" className="pl-[6px] pr-[18px] max-[900px]:hidden" onClick={onCreateNew}>
-        <span className="grid size-[30px] place-items-center rounded-full bg-tomato">
-          <Plus className="size-4 text-white" strokeWidth={2.4} />
-        </span>
-        {nav.createRecipe}
-      </Button>
+      <CreateRecipeMenu onCreateNew={onCreateNew} onImport={onImport} className="max-[900px]:hidden" />
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -128,6 +125,10 @@ export function AppHeader({
             <DropdownMenuItem onClick={onCreateNew}>
               <Plus className="size-4" />
               {nav.createRecipe}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onImport}>
+              <Download className="size-4" />
+              {nav.importFromUrl}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
           </div>

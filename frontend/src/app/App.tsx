@@ -10,6 +10,7 @@ import { Login } from '@/app/components/Login';
 import { AdminPanel } from '@/app/components/AdminPanel';
 import { WeeklyPlanner } from '@/app/components/WeeklyPlanner';
 import { AddToWeekPlannerDialog } from '@/app/components/AddToWeekPlannerDialog';
+import { RecipeImportDialog } from '@/app/components/RecipeImportDialog';
 import { getCurrentWeekStart } from '@/app/types/mealplan';
 import { loadRecipes, addRecipe, updateRecipe, deleteRecipe } from '@/app/utils/localStorage';
 import { initializeAuth, getCurrentUser, logout } from '@/app/utils/auth';
@@ -46,6 +47,7 @@ export default function App() {
   const [cookSession, setCookSession] = useState<CookSession | null>(null);
   const [planRecipe, setPlanRecipe] = useState<Recipe | null>(null);
   const [query, setQuery] = useState('');
+  const [importOpen, setImportOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   const [geminiPrompt, setGeminiPrompt] = useState<string>('');
@@ -321,6 +323,7 @@ export default function App() {
         onQueryChange={handleQueryChange}
         onNavigate={handleNavigate}
         onCreateNew={handleCreateNew}
+        onImport={() => setImportOpen(true)}
         onOpenAdmin={() => setCurrentView('admin')}
         onLogout={handleLogout}
       />
@@ -339,7 +342,7 @@ export default function App() {
                 weekPlan={bandWeekPlan}
                 onSelectRecipe={handleSelectRecipe}
                 onCreateNew={handleCreateNew}
-                onImport={handleImportRecipe}
+                onOpenImport={() => setImportOpen(true)}
                 onCook={(recipe) => startCooking(recipe)}
                 onPlan={setPlanRecipe}
                 onToggleFavorite={handleToggleFavorite}
@@ -424,6 +427,8 @@ export default function App() {
           }}
         />
       )}
+
+      <RecipeImportDialog open={importOpen} onOpenChange={setImportOpen} onImport={handleImportRecipe} />
 
       <Toaster />
     </div>

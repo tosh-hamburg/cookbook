@@ -212,6 +212,9 @@ export const de: Translations = {
       shoppingList: 'Einkaufszettel',
       searchPlaceholder: 'Wonach ist dir heute?',
       createRecipe: 'Rezept anlegen',
+      createMenu: 'Weitere Möglichkeiten',
+      createManually: 'Selbst schreiben',
+      importFromUrl: 'Aus URL importieren',
       account: 'Konto',
     },
     library: {

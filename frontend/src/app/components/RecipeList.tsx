@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Download, Plus } from 'lucide-react';
 import type { Recipe } from '@/app/types/recipe';
 import type { WeekPlan } from '@/app/types/mealplan';
 import { RecipeCard } from '@/app/components/RecipeCard';
 import { RecipeHero } from '@/app/components/library/RecipeHero';
 import { CollectionPills } from '@/app/components/library/CollectionPills';
 import { WeekBand } from '@/app/components/library/WeekBand';
-import { RecipeImport } from '@/app/components/RecipeImport';
 import { Button } from '@/app/components/ui/button';
 import { collectionsApi, type Collection } from '@/app/services/api';
 import { useRecipeSearch } from '@/app/hooks/useRecipeSearch';
@@ -20,7 +19,8 @@ interface RecipeListProps {
   weekPlan: WeekPlan;
   onSelectRecipe: (recipe: Recipe) => void;
   onCreateNew: () => void;
-  onImport: (recipe: Recipe) => void;
+  /** Öffnet den URL-Import (Dialog liegt in der App) */
+  onOpenImport: () => void;
   onCook: (recipe: Recipe) => void;
   onPlan: (recipe: Recipe) => void;
   onToggleFavorite: (recipe: Recipe) => void;
@@ -35,7 +35,7 @@ export function RecipeList({
   weekPlan,
   onSelectRecipe,
   onCreateNew,
-  onImport,
+  onOpenImport,
   onCook,
   onPlan,
   onToggleFavorite,
@@ -86,9 +86,7 @@ export function RecipeList({
 
   if (recipes.length === 0) {
     return (
-      <EmptyState title={lib.empty} hint={lib.emptyHint} onCreateNew={onCreateNew}>
-        <RecipeImport onImport={onImport} />
-      </EmptyState>
+      <EmptyState title={lib.empty} hint={lib.emptyHint} onCreateNew={onCreateNew} onOpenImport={onOpenImport} />
     );
   }
 
@@ -110,7 +108,6 @@ export function RecipeList({
         <span className="text-sm font-medium text-ink-4">
           <b className="font-mono font-bold tabular-nums text-ink-2">{filteredRecipes.length}</b> {lib.recipesCount}
         </span>
-        <RecipeImport onImport={onImport} />
         <span className="flex-1" />
         {collections.length > 0 && (
           <CollectionPills
@@ -149,10 +146,10 @@ interface EmptyStateProps {
   title: string;
   hint: string;
   onCreateNew: () => void;
-  children?: React.ReactNode;
+  onOpenImport?: () => void;
 }
 
-function EmptyState({ title, hint, onCreateNew, children }: EmptyStateProps) {
+function EmptyState({ title, hint, onCreateNew, onOpenImport }: EmptyStateProps) {
   const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center py-20 text-center">
@@ -165,7 +162,12 @@ function EmptyState({ title, hint, onCreateNew, children }: EmptyStateProps) {
           </span>
           {t.kitchen.nav.createRecipe}
         </Button>
-        {children}
+        {onOpenImport && (
+          <Button variant="paper" size="pill" onClick={onOpenImport}>
+            <Download />
+            {t.kitchen.nav.importFromUrl}
+          </Button>
+        )}
       </div>
     </div>
   );
