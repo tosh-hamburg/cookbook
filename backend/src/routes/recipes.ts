@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { AuthRequest, authenticateToken } from '../middleware/auth';
 import sharp from 'sharp';
+import { RECIPE_LIST_ORDER } from '../lib/recipe-order';
 import { MAX_SEARCH_LENGTH, findRecipeIdsByFullText, normalizeSearchTerm } from '../lib/recipe-search';
 import { EMPTY_STATS, RecipeStats, loadRecipeStats, statsFor } from '../lib/recipe-stats';
 
@@ -233,9 +234,9 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
     const recipes = await prisma.recipe.findMany({
       where,
       include: recipeInclude,
-      orderBy: {
-        createdAt: 'desc'
-      },
+      // Eindeutige Sortierung, sonst liefert OFFSET-Paginierung Dubletten —
+      // siehe lib/recipe-order.ts.
+      orderBy: RECIPE_LIST_ORDER,
       ...(limit !== undefined && { skip: offset, take: limit })
     });
 
