@@ -214,6 +214,9 @@ export interface Translations {
       shoppingList: string;
       searchPlaceholder: string;
       createRecipe: string;
+      createMenu: string;
+      createManually: string;
+      importFromUrl: string;
       account: string;
     };
     library: {

@@ -9,20 +9,21 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/app/components/ui/dialog';
 import { importRecipeFromUrl } from '@/app/utils/recipeImport';
 import type { Recipe } from '@/app/types/recipe';
 import { toast } from 'sonner';
 import { useTranslation } from '@/app/i18n';
 
-interface RecipeImportProps {
+interface RecipeImportDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onImport: (recipe: Recipe) => void;
 }
 
-export function RecipeImport({ onImport }: RecipeImportProps) {
+/** Import per URL – gesteuerter Dialog, wird aus dem „Rezept anlegen“-Menü geöffnet. */
+export function RecipeImportDialog({ open, onOpenChange, onImport }: RecipeImportDialogProps) {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -36,8 +37,7 @@ export function RecipeImport({ onImport }: RecipeImportProps) {
     try {
       const recipe = await importRecipeFromUrl(url);
       onImport(recipe);
-      toast.success(t.recipes.importSuccess);
-      setOpen(false);
+      onOpenChange(false);
       setUrl('');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : t.recipes.importError;
@@ -49,19 +49,11 @@ export function RecipeImport({ onImport }: RecipeImportProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="paper" size="pill-xs">
-          <Download />
-          {t.recipes.importRecipe}
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{t.recipeImport.title}</DialogTitle>
-          <DialogDescription>
-            {t.recipeImport.description}
-          </DialogDescription>
+          <DialogDescription>{t.recipeImport.description}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
@@ -72,6 +64,7 @@ export function RecipeImport({ onImport }: RecipeImportProps) {
               onChange={(e) => setUrl(e.target.value)}
               placeholder={t.recipeImport.urlPlaceholder}
               disabled={loading}
+              autoFocus
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   handleImport();
@@ -81,7 +74,7 @@ export function RecipeImport({ onImport }: RecipeImportProps) {
           </div>
         </div>
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={loading}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
             {t.cancel}
           </Button>
           <Button onClick={handleImport} disabled={loading}>
