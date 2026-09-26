@@ -149,11 +149,13 @@ model MealSlot {
   mealPlan   MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
   dayIndex   Int      // 0 = Montag, 6 = Sonntag
   mealType   String   // "breakfast", "lunch", "dinner"
+  position   Int      @default(0) // Reihenfolge im Slot (0 = erstes Gericht, z. B. Hauptgericht)
   recipeId   String?
   recipe     Recipe?  @relation(fields: [recipeId], references: [id], onDelete: SetNull)
   servings   Int      @default(2)
 
-  @@unique([mealPlanId, dayIndex, mealType]) // Ein Slot pro Tag/Mahlzeit
+  // Mehrere Gerichte pro Tag/Mahlzeit möglich (Issue #13)
+  @@index([mealPlanId, dayIndex, mealType, position])
 }
 
 // Systemweite Einstellungen

@@ -12,6 +12,16 @@ import type { PlannerDragData } from '@/app/components/planner/dragData';
 import { mealPlansApi } from '@/app/services/api';
 import { useWeekPlan } from '@/app/hooks/useWeekPlan';
 import { aggregateIngredients, countPlannedMeals, plannedRecipeIds } from '@/app/utils/shoppingList';
+import {
+  addDish,
+  canAddDish,
+  moveDish,
+  removeDish,
+  setDishServings,
+  slotDishes,
+  type DishRef,
+  type SlotRef,
+} from '@/app/utils/planSlots';
 import { addDays, formatDaySpan, getWeekNumber } from '@/app/utils/week';
 import { useTranslation } from '@/app/i18n';
 
@@ -60,7 +70,7 @@ export function WeeklyPlanner({
     [onSentIngredientsChange, onExcludedIngredientsChange],
   );
   const onSaveError = useCallback(() => toast.error(t.planner.saveError), [t]);
-  const { weekPlan, isLoading, isSaving, setSlot } = useWeekPlan(currentWeekStart, recipes, { onLoaded, onSaveError });
+  const { weekPlan, isLoading, isSaving, updatePlan } = useWeekPlan(currentWeekStart, recipes, { onLoaded, onSaveError });
 
   useEffect(() => setSelectedSlot(null), [currentWeekStart]);
 
@@ -82,13 +92,19 @@ export function WeeklyPlanner({
     [listIngredients, sentIngredients],
   );
 
-  const parseSlot = (key: string): { dayIndex: number; mealType: MealType } => {
+  const parseSlot = (key: string): SlotRef => {
     const [day, meal] = key.split(':');
     return { dayIndex: Number(day), mealType: meal as MealType };
   };
 
-  const placeRecipe = (dayIndex: number, mealType: MealType, recipe: Recipe) => {
-    setSlot(dayIndex, mealType, recipe, recipe.servings || DEFAULT_SLOT_SERVINGS);
+  /** Rezept als weiteres Gericht an den Slot hängen (z. B. Nachtisch zum Hauptgericht). */
+  const placeRecipe = (slot: SlotRef, recipe: Recipe) => {
+    const check = canAddDish(weekPlan, slot, recipe.id);
+    if (check !== 'ok') {
+      toast(check === 'full' ? p.slotFull : p.alreadyInSlot);
+      return;
+    }
+    updatePlan((plan) => addDish(plan, slot, { recipe, servings: recipe.servings || DEFAULT_SLOT_SERVINGS }));
     setSelectedSlot(null);
   };
 
@@ -97,29 +113,34 @@ export function WeeklyPlanner({
       toast(p.selectSlotToast);
       return;
     }
-    const { dayIndex, mealType } = parseSlot(selectedSlot);
-    placeRecipe(dayIndex, mealType, recipe);
+    placeRecipe(parseSlot(selectedSlot), recipe);
   };
 
   const handleDrop = (dayIndex: number, mealType: MealType, data: PlannerDragData) => {
+    const target: SlotRef = { dayIndex, mealType };
     if (data.kind === 'recipe') {
       const recipe = recipeById.get(data.recipeId);
-      if (recipe) placeRecipe(dayIndex, mealType, recipe);
+      if (recipe) placeRecipe(target, recipe);
       return;
     }
     if (data.dayIndex === dayIndex && data.mealType === mealType) return;
-    const source = weekPlan.days[data.dayIndex].meals[data.mealType];
-    const target = weekPlan.days[dayIndex].meals[mealType];
-    if (!source.recipe) return;
-    setSlot(dayIndex, mealType, source.recipe, source.servings);
-    setSlot(data.dayIndex, data.mealType, target.recipe, target.recipe ? target.servings : DEFAULT_SLOT_SERVINGS);
+    // Resolve by recipe (unique per slot), not by index — the plan may have been reloaded meanwhile
+    const index = slotDishes(weekPlan, data).findIndex((dish) => dish.recipe.id === data.recipeId);
+    const dish = slotDishes(weekPlan, data)[index];
+    if (!dish) return;
+    const check = canAddDish(weekPlan, target, dish.recipe.id);
+    if (check !== 'ok') {
+      toast(check === 'full' ? p.slotFull : p.alreadyInSlot);
+      return;
+    }
+    updatePlan((plan) => moveDish(plan, { dayIndex: data.dayIndex, mealType: data.mealType, index }, target));
     setSelectedSlot(null);
   };
 
-  const changeServings = (dayIndex: number, mealType: MealType, delta: number) => {
-    const slot = weekPlan.days[dayIndex].meals[mealType];
-    if (!slot.recipe) return;
-    setSlot(dayIndex, mealType, slot.recipe, Math.max(1, Math.min(99, slot.servings + delta)));
+  const changeServings = (ref: DishRef, delta: number) => {
+    const dish = slotDishes(weekPlan, ref)[ref.index];
+    if (!dish) return;
+    updatePlan((plan) => setDishServings(plan, ref, dish.servings + delta));
   };
 
   const toggleExclusion = async (name: string) => {
@@ -246,7 +267,7 @@ export function WeeklyPlanner({
               selectedSlot={selectedSlot}
               onSelectSlot={setSelectedSlot}
               onDrop={handleDrop}
-              onRemove={(dayIndex, mealType) => setSlot(dayIndex, mealType, null, DEFAULT_SLOT_SERVINGS)}
+              onRemove={(ref) => updatePlan((plan) => removeDish(plan, ref))}
               onChangeServings={changeServings}
               onViewRecipe={onViewRecipe}
               disabled={isSaving}

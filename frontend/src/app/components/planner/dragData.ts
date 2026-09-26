@@ -3,7 +3,7 @@ import type { MealType } from '@/app/types/mealplan';
 /** Nutzlast für natives Drag & Drop im Wochenplaner. */
 export type PlannerDragData =
   | { kind: 'recipe'; recipeId: string }
-  | { kind: 'slot'; dayIndex: number; mealType: MealType };
+  | { kind: 'dish'; dayIndex: number; mealType: MealType; recipeId: string };
 
 const MIME = 'application/x-cookbook-planner';
 

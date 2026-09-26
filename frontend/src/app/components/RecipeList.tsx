@@ -71,7 +71,7 @@ export function RecipeList({
   const isFiltering = query.trim().length > 0 || selectedCollections.size > 0;
 
   const nextOpenDay = useMemo(() => {
-    const index = weekPlan.days.findIndex((day) => !day.meals.dinner.recipe);
+    const index = weekPlan.days.findIndex((day) => day.meals.dinner.dishes.length === 0);
     return index === -1 ? null : t.planner.dayNames[index];
   }, [weekPlan, t]);
 

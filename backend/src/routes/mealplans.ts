@@ -1,12 +1,24 @@
 import { Router, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { AuthRequest, authenticateToken } from '../middleware/auth';
+import {
+  MAX_DISHES_PER_SLOT,
+  applyLegacySlotUpdate,
+  buildSlotRows,
+  buildWeekRows,
+  parseDish,
+  parseSlotTarget,
+  parseSlotUpdates,
+  type DishInput,
+  type SlotTarget
+} from '../lib/meal-slots';
 
 const router = Router();
 
 // Include for meal plan queries
 const mealPlanInclude = {
   meals: {
+    orderBy: [{ dayIndex: 'asc' }, { mealType: 'asc' }, { position: 'asc' }],
     include: {
       recipe: {
         include: {
@@ -20,7 +32,7 @@ const mealPlanInclude = {
       }
     }
   }
-} as const;
+} satisfies Prisma.MealPlanInclude;
 
 // Transform meal plan for frontend
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -33,6 +45,7 @@ function transformMealPlan(mealPlan: any) {
     meals: mealPlan.meals.map((slot: any) => ({
       dayIndex: slot.dayIndex,
       mealType: slot.mealType,
+      position: slot.position,
       servings: slot.servings,
       recipe: slot.recipe ? {
         id: slot.recipe.id,
@@ -70,6 +83,56 @@ async function findOrCreateMealPlan(prisma: PrismaClient, weekStart: Date, userI
   }
 
   return mealPlan;
+}
+
+async function respondWithMealPlan(prisma: PrismaClient, mealPlanId: string, res: Response) {
+  const mealPlan = await prisma.mealPlan.findUnique({
+    where: { id: mealPlanId },
+    include: mealPlanInclude
+  });
+  res.json(transformMealPlan(mealPlan));
+}
+
+async function allRecipesExist(prisma: PrismaClient, recipeIds: string[]): Promise<boolean> {
+  const unique = [...new Set(recipeIds)];
+  if (unique.length === 0) return true;
+  const found = await prisma.recipe.count({ where: { id: { in: unique } } });
+  return found === unique.length;
+}
+
+function slotWhere(mealPlanId: string, target: SlotTarget) {
+  return { mealPlanId, dayIndex: target.dayIndex, mealType: target.mealType };
+}
+
+type Tx = Prisma.TransactionClient;
+
+// Run slot writes of one plan in a transaction that locks the plan row, so
+// concurrent read-then-write requests (append, legacy update) are serialized.
+async function withLockedPlan<T>(prisma: PrismaClient, mealPlanId: string, work: (tx: Tx) => Promise<T>): Promise<T> {
+  return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "MealPlan" WHERE id = ${mealPlanId} FOR UPDATE`;
+    return work(tx);
+  });
+}
+
+// Dishes of one slot in order; rows whose recipe was deleted are skipped
+async function readSlotDishes(tx: Tx, mealPlanId: string, target: SlotTarget): Promise<DishInput[]> {
+  const rows = await tx.mealSlot.findMany({
+    where: { ...slotWhere(mealPlanId, target), recipeId: { not: null } },
+    orderBy: { position: 'asc' },
+    select: { recipeId: true, servings: true }
+  });
+  return rows.map((row) => ({ recipeId: row.recipeId!, servings: row.servings }));
+}
+
+async function replaceSlotDishes(tx: Tx, mealPlanId: string, target: SlotTarget, dishes: DishInput[]) {
+  await tx.mealSlot.deleteMany({ where: slotWhere(mealPlanId, target) });
+  await tx.mealSlot.createMany({ data: buildSlotRows(mealPlanId, target, dishes) });
+}
+
+function parseWeekStart(param: string): Date | null {
+  const weekStart = normalizeWeekStart(new Date(param));
+  return isNaN(weekStart.getTime()) ? null : weekStart;
 }
 
 // Get meal plan for a specific week (shared across all users)
@@ -131,104 +194,116 @@ router.put('/:weekStart', authenticateToken, async (req: AuthRequest, res: Respo
     // Find or create shared meal plan
     const mealPlan = await findOrCreateMealPlan(prisma, weekStart, userId);
 
-    // Delete existing meal slots
-    await prisma.mealSlot.deleteMany({
-      where: { mealPlanId: mealPlan.id }
-    });
-
-    // Create new meal slots
-    const validMeals = meals.filter(
-      (m: any) => m.recipeId && m.dayIndex >= 0 && m.dayIndex <= 6 && 
-      ['breakfast', 'lunch', 'dinner'].includes(m.mealType)
-    );
-
-    if (validMeals.length > 0) {
-      await prisma.mealSlot.createMany({
-        data: validMeals.map((m: any) => ({
-          mealPlanId: mealPlan.id,
-          dayIndex: m.dayIndex,
-          mealType: m.mealType,
-          recipeId: m.recipeId,
-          servings: m.servings || 2
-        }))
-      });
+    // Replace all meal slots; several dishes per day/meal are allowed
+    const rows = buildWeekRows(mealPlan.id, meals);
+    if (!(await allRecipesExist(prisma, rows.map((row) => row.recipeId)))) {
+      return res.status(400).json({ error: 'Unbekanntes Rezept im Wochenplan' });
     }
 
-    // Fetch updated meal plan
-    const updatedMealPlan = await prisma.mealPlan.findUnique({
-      where: { id: mealPlan.id },
-      include: mealPlanInclude
+    await withLockedPlan(prisma, mealPlan.id, async (tx) => {
+      await tx.mealSlot.deleteMany({ where: { mealPlanId: mealPlan.id } });
+      await tx.mealSlot.createMany({ data: rows });
     });
 
-    res.json(transformMealPlan(updatedMealPlan));
+    await respondWithMealPlan(prisma, mealPlan.id, res);
   } catch (error) {
-    console.error('Update meal plan error:', error);
+        console.error('Update meal plan error:', error);
     res.status(500).json({ error: 'Fehler beim Speichern des Wochenplans' });
   }
 });
 
-// Update a single meal slot (shared across all users)
+// Replace the dishes of one or more slots in one transaction (shared across all users).
+// Moving a dish touches two slots, so both are sent together.
+// Body: { slots: [{ dayIndex, mealType, dishes: [{ recipeId, servings }] }] } - an empty dish list clears a slot.
+router.put('/:weekStart/slots', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const prisma = req.app.locals.prisma as PrismaClient;
+    const weekStart = parseWeekStart(req.params.weekStart as string);
+    if (!weekStart) return res.status(400).json({ error: 'Ungültiges Datum' });
+
+    const updates = parseSlotUpdates(req.body.slots);
+    if (!updates.ok) return res.status(400).json({ error: updates.error });
+    const recipeIds = updates.value.flatMap((update) => update.dishes.map((dish) => dish.recipeId));
+    if (!(await allRecipesExist(prisma, recipeIds))) {
+      return res.status(400).json({ error: 'Rezept nicht gefunden' });
+    }
+
+    const mealPlan = await findOrCreateMealPlan(prisma, weekStart, req.user!.id);
+    await withLockedPlan(prisma, mealPlan.id, async (tx) => {
+      for (const update of updates.value) {
+        await replaceSlotDishes(tx, mealPlan.id, update.target, update.dishes);
+      }
+    });
+    await respondWithMealPlan(prisma, mealPlan.id, res);
+  } catch (error) {
+    console.error('Replace meal slots error:', error);
+    res.status(500).json({ error: 'Fehler beim Speichern der Mahlzeit' });
+  }
+});
+
+// Append one dish to a slot (shared across all users).
+// Body: { dayIndex, mealType, recipeId, servings }
+router.post('/:weekStart/slot', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const prisma = req.app.locals.prisma as PrismaClient;
+    const weekStart = parseWeekStart(req.params.weekStart as string);
+    if (!weekStart) return res.status(400).json({ error: 'Ungültiges Datum' });
+
+    const target = parseSlotTarget(req.body);
+    if (!target.ok) return res.status(400).json({ error: target.error });
+    const dish = parseDish(req.body);
+    if (!dish.ok) return res.status(400).json({ error: dish.error });
+    if (!(await allRecipesExist(prisma, [dish.value.recipeId]))) {
+      return res.status(400).json({ error: 'Rezept nicht gefunden' });
+    }
+
+    const mealPlan = await findOrCreateMealPlan(prisma, weekStart, req.user!.id);
+    const conflict = await withLockedPlan(prisma, mealPlan.id, async (tx) => {
+      const existing = await readSlotDishes(tx, mealPlan.id, target.value);
+      if (existing.some((other) => other.recipeId === dish.value.recipeId)) {
+        return 'Rezept ist in diesem Slot schon geplant';
+      }
+      if (existing.length >= MAX_DISHES_PER_SLOT) {
+        return `Höchstens ${MAX_DISHES_PER_SLOT} Gerichte pro Slot`;
+      }
+      await replaceSlotDishes(tx, mealPlan.id, target.value, [...existing, dish.value]);
+      return null;
+    });
+    if (conflict) return res.status(409).json({ error: conflict });
+
+    await respondWithMealPlan(prisma, mealPlan.id, res);
+  } catch (error) {
+    console.error('Append meal slot error:', error);
+    res.status(500).json({ error: 'Fehler beim Speichern der Mahlzeit' });
+  }
+});
+
+// Legacy (Android app, one dish per slot): set or clear the FIRST dish of a slot.
+// Further dishes (e.g. dessert planned in the web app) are kept.
+// Body: { dayIndex, mealType, recipeId, servings }
 router.patch('/:weekStart/slot', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const prisma = req.app.locals.prisma as PrismaClient;
-    const userId = req.user!.id;
-    const weekStartParam = req.params.weekStart as string;
-    const { dayIndex, mealType, recipeId, servings } = req.body;
+    const weekStart = parseWeekStart(req.params.weekStart as string);
+    if (!weekStart) return res.status(400).json({ error: 'Ungültiges Datum' });
 
-    // Parse and normalize the week start date
-    const weekStart = normalizeWeekStart(new Date(weekStartParam));
+    const target = parseSlotTarget(req.body);
+    if (!target.ok) return res.status(400).json({ error: target.error });
 
-    if (isNaN(weekStart.getTime())) {
-      return res.status(400).json({ error: 'Ungültiges Datum' });
+    const { recipeId, servings } = req.body;
+    const dish = recipeId ? parseDish({ recipeId, servings: servings || undefined }) : null;
+    if (dish && !dish.ok) return res.status(400).json({ error: dish.error });
+    const newDish = dish && dish.ok ? dish.value : null;
+    if (newDish && !(await allRecipesExist(prisma, [newDish.recipeId]))) {
+      return res.status(400).json({ error: 'Rezept nicht gefunden' });
     }
 
-    if (dayIndex < 0 || dayIndex > 6 || !['breakfast', 'lunch', 'dinner'].includes(mealType)) {
-      return res.status(400).json({ error: 'Ungültige Slot-Parameter' });
-    }
-
-    // Find or create shared meal plan
-    const mealPlan = await findOrCreateMealPlan(prisma, weekStart, userId);
-
-    if (recipeId) {
-      // Upsert meal slot
-      await prisma.mealSlot.upsert({
-        where: {
-          mealPlanId_dayIndex_mealType: {
-            mealPlanId: mealPlan.id,
-            dayIndex,
-            mealType
-          }
-        },
-        create: {
-          mealPlanId: mealPlan.id,
-          dayIndex,
-          mealType,
-          recipeId,
-          servings: servings || 2
-        },
-        update: {
-          recipeId,
-          servings: servings || 2
-        }
-      });
-    } else {
-      // Remove meal slot if no recipe
-      await prisma.mealSlot.deleteMany({
-        where: {
-          mealPlanId: mealPlan.id,
-          dayIndex,
-          mealType
-        }
-      });
-    }
-
-    // Fetch updated meal plan
-    const updatedMealPlan = await prisma.mealPlan.findUnique({
-      where: { id: mealPlan.id },
-      include: mealPlanInclude
+    const mealPlan = await findOrCreateMealPlan(prisma, weekStart, req.user!.id);
+    await withLockedPlan(prisma, mealPlan.id, async (tx) => {
+      const existing = await readSlotDishes(tx, mealPlan.id, target.value);
+      await replaceSlotDishes(tx, mealPlan.id, target.value, applyLegacySlotUpdate(existing, newDish));
     });
-
-    res.json(transformMealPlan(updatedMealPlan));
+    await respondWithMealPlan(prisma, mealPlan.id, res);
   } catch (error) {
     console.error('Update meal slot error:', error);
     res.status(500).json({ error: 'Fehler beim Speichern der Mahlzeit' });

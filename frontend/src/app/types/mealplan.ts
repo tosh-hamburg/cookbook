@@ -2,10 +2,16 @@ import type { Recipe, Ingredient } from './recipe';
 
 export type MealType = 'breakfast' | 'lunch' | 'dinner';
 
+/** Ein Gericht in einem Slot, mit eigener Portionszahl. */
+export interface PlannedDish {
+  recipe: Recipe;
+  servings: number;
+}
+
+/** Tag × Mahlzeit; kann mehrere Gerichte enthalten (z. B. Hauptgericht und Nachtisch). */
 export interface MealSlot {
   mealType: MealType;
-  recipe: Recipe | null;
-  servings: number;
+  dishes: PlannedDish[];
 }
 
 export interface DayPlan {
@@ -85,9 +91,9 @@ export function createEmptyWeekPlan(weekStart: Date): WeekPlan {
     days.push({
       date,
       meals: {
-        breakfast: { mealType: 'breakfast', recipe: null, servings: 2 },
-        lunch: { mealType: 'lunch', recipe: null, servings: 2 },
-        dinner: { mealType: 'dinner', recipe: null, servings: 2 },
+        breakfast: { mealType: 'breakfast', dishes: [] },
+        lunch: { mealType: 'lunch', dishes: [] },
+        dinner: { mealType: 'dinner', dishes: [] },
       },
     });
   }

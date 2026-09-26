@@ -10,21 +10,22 @@ interface WeekBandProps {
   onCreateShoppingList: () => void;
 }
 
-/** Gericht des Tages fürs Band: Abend zuerst, sonst Mittag, sonst Frühstück. */
+const BAND_MEAL_ORDER = ['dinner', 'lunch', 'breakfast'] as const;
+
+/**
+ * Gerichte des Tages fürs Band: Abend zuerst, sonst Mittag, sonst Frühstück.
+ * Mehrere Gerichte eines Slots werden verbunden („Lasagne + Tiramisu").
+ */
 export function dayMealTitle(day: WeekPlan['days'][number]): string | null {
-  return (
-    day.meals.dinner.recipe?.title ??
-    day.meals.lunch.recipe?.title ??
-    day.meals.breakfast.recipe?.title ??
-    null
-  );
+  const slot = BAND_MEAL_ORDER.map((type) => day.meals[type]).find((meal) => meal.dishes.length > 0);
+  return slot ? slot.dishes.map((dish) => dish.recipe.title).join(' + ') : null;
 }
 
 /** Block D der Bibliothek: dunkles Wochenplan-Band. */
 export function WeekBand({ weekPlan, onOpenPlanner, onCreateShoppingList }: WeekBandProps) {
   const { t } = useTranslation();
   const lib = t.kitchen.library;
-  const openEvenings = weekPlan.days.filter((day) => !day.meals.dinner.recipe).length;
+  const openEvenings = weekPlan.days.filter((day) => day.meals.dinner.dishes.length === 0).length;
   const status =
     openEvenings === 0 ? lib.allEveningsPlanned : lib.eveningsOpen.replace('{count}', String(openEvenings));
 

@@ -9,6 +9,7 @@ import type { Recipe } from '@/app/types/recipe';
 import type { MealType } from '@/app/types/mealplan';
 import { getCurrentWeekStart, getNextWeekStart, formatDateShort, formatWeekRange } from '@/app/types/mealplan';
 import { mealPlansApi, type MealPlanData } from '@/app/services/api';
+import { MAX_DISHES_PER_SLOT } from '@/app/utils/planSlots';
 import { useTranslation } from '@/app/i18n';
 
 // Get the default week start (next Monday, consistent with WeeklyPlanner)
@@ -104,21 +105,18 @@ export function AddToWeekPlannerDialog({ recipe, servings, open, onOpenChange, o
     loadMealPlan();
   }, [currentWeekStart, open]);
 
-  // Check if a slot is occupied
-  const isSlotOccupied = (dayIndex: number, mealType: MealType): boolean => {
-    if (!mealPlanData) return false;
-    return mealPlanData.meals.some(
-      meal => meal.dayIndex === dayIndex && meal.mealType === mealType && meal.recipe !== null
+  // Dishes already planned in a slot (a slot can hold several, e.g. main course and dessert)
+  const getSlotDishes = (dayIndex: number, mealType: MealType) =>
+    (mealPlanData?.meals ?? []).filter(
+      (meal) => meal.dayIndex === dayIndex && meal.mealType === mealType && meal.recipe !== null
     );
-  };
 
-  // Get recipe title for occupied slot
-  const getSlotRecipeTitle = (dayIndex: number, mealType: MealType): string | null => {
-    if (!mealPlanData) return null;
-    const meal = mealPlanData.meals.find(
-      meal => meal.dayIndex === dayIndex && meal.mealType === mealType && meal.recipe !== null
-    );
-    return meal?.recipe?.title || null;
+  // Why a slot cannot take this recipe, or null if it can
+  const getBlockReason = (dayIndex: number, mealType: MealType): string | null => {
+    const dishes = getSlotDishes(dayIndex, mealType);
+    if (dishes.some((meal) => meal.recipe?.id === recipe.id)) return t.kitchen.plan.alreadyInSlot;
+    if (dishes.length >= MAX_DISHES_PER_SLOT) return t.kitchen.plan.slotFull;
+    return null;
   };
 
   // Navigate weeks
@@ -156,8 +154,8 @@ export function AddToWeekPlannerDialog({ recipe, servings, open, onOpenChange, o
 
   // Handle slot selection
   const handleSlotClick = (dayIndex: number, mealType: MealType) => {
-    // Don't allow selecting occupied slots
-    if (isSlotOccupied(dayIndex, mealType)) {
+    // Occupied slots are fine (the recipe is appended), full ones or duplicates are not
+    if (getBlockReason(dayIndex, mealType)) {
       return;
     }
     setSelectedDayIndex(dayIndex);
@@ -173,7 +171,7 @@ export function AddToWeekPlannerDialog({ recipe, servings, open, onOpenChange, o
 
     setIsAdding(true);
     try {
-      await mealPlansApi.updateSlot(
+      await mealPlansApi.addToSlot(
         currentWeekStart,
         selectedDayIndex,
         selectedMealType,
@@ -295,31 +293,35 @@ export function AddToWeekPlannerDialog({ recipe, servings, open, onOpenChange, o
                 
                 {mealTypes.map((mealType) => {
                   const isSelected = selectedDayIndex === day.index && selectedMealType === mealType;
-                  const isOccupied = isSlotOccupied(day.index, mealType);
-                  const occupiedRecipeTitle = isOccupied ? getSlotRecipeTitle(day.index, mealType) : null;
+                  const plannedTitles = getSlotDishes(day.index, mealType).map((meal) => meal.recipe!.title);
+                  const isOccupied = plannedTitles.length > 0;
+                  const blockReason = getBlockReason(day.index, mealType);
+                  const tooltip = [plannedTitles.join(' + '), blockReason].filter(Boolean).join(' — ');
                   
                   return (
                     <button
                       key={mealType}
                       onClick={() => handleSlotClick(day.index, mealType)}
-                      disabled={isOccupied}
-                      title={isOccupied && occupiedRecipeTitle ? occupiedRecipeTitle : undefined}
+                      disabled={blockReason !== null}
+                      title={tooltip || undefined}
                       className={`w-full rounded-2xl border-[1.5px] p-2 transition-all ${
-                        isOccupied
+                        blockReason
                           ? 'cursor-not-allowed border-line-soft bg-white opacity-60'
                           : isSelected
                           ? 'border-tomato bg-[oklch(0.94_0.045_85)]'
+                          : isOccupied
+                          ? 'border-line-soft bg-white hover:border-tomato'
                           : 'border-dashed border-[oklch(0.85_0.02_80)] hover:border-tomato'
                       }`}
                     >
                       <div className="flex items-center justify-center gap-1 text-xs">
                         {getMealIcon(mealType)}
-                        <span className={isOccupied ? 'line-through' : ''}>{mealTypeLabels[mealType]}</span>
+                        <span>{mealTypeLabels[mealType]}</span>
                         {isSelected && <Check className="h-3 w-3 text-primary" />}
                       </div>
-                      {isOccupied && occupiedRecipeTitle && (
+                      {isOccupied && (
                         <div className="text-[10px] text-muted-foreground mt-1 truncate">
-                          {occupiedRecipeTitle}
+                          {plannedTitles.join(' + ')}
                         </div>
                       )}
                     </button>

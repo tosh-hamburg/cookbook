@@ -344,6 +344,8 @@ export const healthCheck = async (): Promise<{ status: string; timestamp: string
 export interface MealSlotData {
   dayIndex: number;
   mealType: 'breakfast' | 'lunch' | 'dinner';
+  /** Reihenfolge innerhalb des Slots (mehrere Gerichte pro Tag/Mahlzeit) */
+  position: number;
   servings: number;
   recipe: {
     id: string;
@@ -362,6 +364,12 @@ export interface MealPlanData {
   sentIngredients: string[];
   excludedIngredients: string[];
   meals: MealSlotData[];
+}
+
+export interface SlotDishesUpdate {
+  dayIndex: number;
+  mealType: 'breakfast' | 'lunch' | 'dinner';
+  dishes: Array<{ recipeId: string; servings: number }>;
 }
 
 export interface MealSlotUpdate {
@@ -387,17 +395,26 @@ export const mealPlansApi = {
     });
   },
 
-  // Update a single meal slot
-  updateSlot: async (
+  // Replace the dishes of one or more slots in one transaction (empty list clears a slot)
+  replaceSlots: async (weekStart: Date, slots: SlotDishesUpdate[]): Promise<MealPlanData> => {
+    const dateStr = weekStart.toISOString().split('T')[0];
+    return fetchApi<MealPlanData>(`/mealplans/${dateStr}/slots`, {
+      method: 'PUT',
+      body: JSON.stringify({ slots }),
+    });
+  },
+
+  // Append one dish to a slot
+  addToSlot: async (
     weekStart: Date,
     dayIndex: number,
     mealType: 'breakfast' | 'lunch' | 'dinner',
-    recipeId: string | null,
+    recipeId: string,
     servings: number
   ): Promise<MealPlanData> => {
     const dateStr = weekStart.toISOString().split('T')[0];
     return fetchApi<MealPlanData>(`/mealplans/${dateStr}/slot`, {
-      method: 'PATCH',
+      method: 'POST',
       body: JSON.stringify({ dayIndex, mealType, recipeId, servings }),
     });
   },

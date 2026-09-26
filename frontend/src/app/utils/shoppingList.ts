@@ -1,7 +1,7 @@
 import type { Recipe } from '@/app/types/recipe';
-import type { WeekPlan, MealType, AggregatedIngredient } from '@/app/types/mealplan';
+import type { WeekPlan, MealType, AggregatedIngredient, PlannedDish } from '@/app/types/mealplan';
 import { createEmptyWeekPlan } from '@/app/types/mealplan';
-import type { MealPlanData } from '@/app/services/api';
+import type { MealPlanData, MealSlotData } from '@/app/services/api';
 import { parseAmount } from '@/app/utils/amounts';
 
 export const MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner'];
@@ -43,24 +43,19 @@ function formatTotal(amounts: CollectedIngredient['amounts']): string {
 export function aggregateIngredients(weekPlan: WeekPlan): AggregatedIngredient[] {
   const collected = new Map<string, CollectedIngredient>();
 
-  for (const day of weekPlan.days) {
-    for (const mealType of MEAL_TYPES) {
-      const meal = day.meals[mealType];
-      if (!meal.recipe) continue;
-
-      const scaleFactor = meal.servings / (meal.recipe.servings || 1);
-      for (const ing of meal.recipe.ingredients) {
-        const key = ing.name.toLowerCase().trim();
-        const parsed = parseAmount(ing.amount);
-        const entry = collected.get(key) ?? { amounts: [], sources: [] };
-        collected.set(key, {
-          amounts: [...entry.amounts, { value: (parsed.value ?? 0) * scaleFactor, unit: parsed.rest }],
-          sources: [
-            ...entry.sources,
-            { recipeTitle: meal.recipe.title, servings: meal.servings, originalAmount: ing.amount },
-          ],
-        });
-      }
+  for (const dish of allDishes(weekPlan)) {
+    const scaleFactor = dish.servings / (dish.recipe.servings || 1);
+    for (const ing of dish.recipe.ingredients) {
+      const key = ing.name.toLowerCase().trim();
+      const parsed = parseAmount(ing.amount);
+      const entry = collected.get(key) ?? { amounts: [], sources: [] };
+      collected.set(key, {
+        amounts: [...entry.amounts, { value: (parsed.value ?? 0) * scaleFactor, unit: parsed.rest }],
+        sources: [
+          ...entry.sources,
+          { recipeTitle: dish.recipe.title, servings: dish.servings, originalAmount: ing.amount },
+        ],
+      });
     }
   }
 
@@ -73,40 +68,41 @@ export function aggregateIngredients(weekPlan: WeekPlan): AggregatedIngredient[]
     .sort((a, b) => a.name.localeCompare(b.name, 'de'));
 }
 
+type PartialRecipe = NonNullable<MealSlotData['recipe']>;
+
+function toRecipe(partial: PartialRecipe, recipes: Recipe[]): Recipe {
+  return (
+    recipes.find((r) => r.id === partial.id) ?? {
+      id: partial.id,
+      title: partial.title,
+      images: partial.images,
+      ingredients: partial.ingredients,
+      instructions: '',
+      prepTime: 0,
+      restTime: 0,
+      cookTime: 0,
+      totalTime: partial.totalTime,
+      servings: partial.servings,
+      caloriesPerUnit: 0,
+      weightUnit: '',
+      categories: partial.categories,
+      createdAt: '',
+    }
+  );
+}
+
 /** Backend-Wochenplan in das WeekPlan-Modell übersetzen; volle Rezepte bevorzugen. */
 export function mealPlanDataToWeekPlan(data: MealPlanData, weekStart: Date, recipes: Recipe[]): WeekPlan {
   const empty = createEmptyWeekPlan(weekStart);
 
   const days = empty.days.map((day, dayIndex) => {
-    const slots = data.meals.filter((m) => m.dayIndex === dayIndex && m.recipe);
-    if (slots.length === 0) return day;
-
-    const meals = slots.reduce(
-      (acc, slot) => {
-        const partial = slot.recipe!;
-        const recipe: Recipe = recipes.find((r) => r.id === partial.id) ?? {
-          id: partial.id,
-          title: partial.title,
-          images: partial.images,
-          ingredients: partial.ingredients,
-          instructions: '',
-          prepTime: 0,
-          restTime: 0,
-          cookTime: 0,
-          totalTime: partial.totalTime,
-          servings: partial.servings,
-          caloriesPerUnit: 0,
-          weightUnit: '',
-          categories: partial.categories,
-          createdAt: '',
-        };
-        return {
-          ...acc,
-          [slot.mealType]: { mealType: slot.mealType, recipe, servings: slot.servings },
-        };
-      },
-      day.meals,
-    );
+    const meals = MEAL_TYPES.reduce((acc, mealType) => {
+      const dishes: PlannedDish[] = data.meals
+        .filter((m) => m.dayIndex === dayIndex && m.mealType === mealType && m.recipe)
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+        .map((m) => ({ recipe: toRecipe(m.recipe!, recipes), servings: m.servings }));
+      return dishes.length > 0 ? { ...acc, [mealType]: { mealType, dishes } } : acc;
+    }, day.meals);
 
     return { ...day, meals };
   });
@@ -114,17 +110,15 @@ export function mealPlanDataToWeekPlan(data: MealPlanData, weekStart: Date, reci
   return { ...empty, days };
 }
 
+/** Alle geplanten Gerichte der Woche, Tag für Tag, Frühstück bis Abend. */
+export function allDishes(weekPlan: WeekPlan): PlannedDish[] {
+  return weekPlan.days.flatMap((day) => MEAL_TYPES.flatMap((type) => day.meals[type].dishes));
+}
+
 export function countPlannedMeals(weekPlan: WeekPlan): number {
-  return weekPlan.days.reduce(
-    (sum, day) => sum + MEAL_TYPES.filter((type) => day.meals[type].recipe).length,
-    0,
-  );
+  return allDishes(weekPlan).length;
 }
 
 export function plannedRecipeIds(weekPlan: WeekPlan): Set<string> {
-  return new Set(
-    weekPlan.days.flatMap((day) =>
-      MEAL_TYPES.map((type) => day.meals[type].recipe?.id).filter((id): id is string => !!id),
-    ),
-  );
+  return new Set(allDishes(weekPlan).map((dish) => dish.recipe.id));
 }

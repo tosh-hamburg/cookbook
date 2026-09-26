@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Minus, Plus, X } from 'lucide-react';
-import type { MealType, WeekPlan, MealSlot } from '@/app/types/mealplan';
+import type { MealType, WeekPlan, MealSlot, PlannedDish } from '@/app/types/mealplan';
 import type { Recipe } from '@/app/types/recipe';
 import { cn } from '@/app/components/ui/utils';
 import { collectionColor, NEUTRAL_HUE } from '@/app/utils/collectionColors';
 import { primaryCollection } from '@/app/utils/recipeMeta';
 import { formatShortDate } from '@/app/utils/week';
 import { MEAL_TYPES } from '@/app/utils/shoppingList';
+import { MAX_DISHES_PER_SLOT, type DishRef } from '@/app/utils/planSlots';
 import { hasDragData, readDragData, setDragData, slotKey, type PlannerDragData } from '@/app/components/planner/dragData';
 import { useTranslation } from '@/app/i18n';
 
@@ -15,15 +16,15 @@ interface PlannerGridProps {
   selectedSlot: string | null;
   onSelectSlot: (key: string | null) => void;
   onDrop: (dayIndex: number, mealType: MealType, data: PlannerDragData) => void;
-  onRemove: (dayIndex: number, mealType: MealType) => void;
-  onChangeServings: (dayIndex: number, mealType: MealType, delta: number) => void;
+  onRemove: (ref: DishRef) => void;
+  onChangeServings: (ref: DishRef, delta: number) => void;
   onViewRecipe: (recipe: Recipe) => void;
   disabled?: boolean;
 }
 
 const MAX_SLOT_SERVINGS = 99;
 
-/** Sieben Tage × drei Mahlzeiten (Handoff 3c, linke Seite). */
+/** Sieben Tage × drei Mahlzeiten (Handoff 3c, linke Seite); je Slot mehrere Gerichte. */
 export function PlannerGrid({
   weekPlan,
   selectedSlot,
@@ -60,21 +61,24 @@ export function PlannerGrid({
             <div className="flex items-center text-[13px] font-semibold leading-[1.2] text-ink-2">
               {mealLabels[mealType]}
             </div>
-            {weekPlan.days.map((day, dayIndex) => (
-              <PlannerCell
-                key={dayIndex}
-                dayIndex={dayIndex}
-                mealType={mealType}
-                slot={day.meals[mealType]}
-                selected={selectedSlot === slotKey(dayIndex, mealType)}
-                onSelect={() => onSelectSlot(selectedSlot === slotKey(dayIndex, mealType) ? null : slotKey(dayIndex, mealType))}
-                onDrop={(data) => onDrop(dayIndex, mealType, data)}
-                onRemove={() => onRemove(dayIndex, mealType)}
-                onChangeServings={(delta) => onChangeServings(dayIndex, mealType, delta)}
-                onViewRecipe={onViewRecipe}
-                disabled={disabled}
-              />
-            ))}
+            {weekPlan.days.map((day, dayIndex) => {
+              const key = slotKey(dayIndex, mealType);
+              return (
+                <PlannerCell
+                  key={dayIndex}
+                  dayIndex={dayIndex}
+                  mealType={mealType}
+                  slot={day.meals[mealType]}
+                  selected={selectedSlot === key}
+                  onSelect={() => onSelectSlot(selectedSlot === key ? null : key)}
+                  onDrop={(data) => onDrop(dayIndex, mealType, data)}
+                  onRemove={(index) => onRemove({ dayIndex, mealType, index })}
+                  onChangeServings={(index, delta) => onChangeServings({ dayIndex, mealType, index }, delta)}
+                  onViewRecipe={onViewRecipe}
+                  disabled={disabled}
+                />
+              );
+            })}
           </div>
         ))}
       </div>
@@ -89,8 +93,8 @@ interface PlannerCellProps {
   selected: boolean;
   onSelect: () => void;
   onDrop: (data: PlannerDragData) => void;
-  onRemove: () => void;
-  onChangeServings: (delta: number) => void;
+  onRemove: (index: number) => void;
+  onChangeServings: (index: number, delta: number) => void;
   onViewRecipe: (recipe: Recipe) => void;
   disabled?: boolean;
 }
@@ -110,9 +114,7 @@ function PlannerCell({
   const { t } = useTranslation();
   const p = t.kitchen.plan;
   const [isOver, setIsOver] = useState(false);
-  const recipe = slot.recipe;
-  const collection = recipe ? primaryCollection(recipe) : null;
-  const hue = recipe ? collectionColor(collection) : NEUTRAL_HUE;
+  const { dishes } = slot;
 
   const dragHandlers = {
     onDragOver: (event: React.DragEvent) => {
@@ -121,7 +123,10 @@ function PlannerCell({
       event.dataTransfer.dropEffect = 'move';
       if (!isOver) setIsOver(true);
     },
-    onDragLeave: () => setIsOver(false),
+    onDragLeave: (event: React.DragEvent) => {
+      if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+      setIsOver(false);
+    },
     onDrop: (event: React.DragEvent) => {
       event.preventDefault();
       setIsOver(false);
@@ -130,7 +135,7 @@ function PlannerCell({
     },
   };
 
-  if (!recipe) {
+  if (dishes.length === 0) {
     return (
       <button
         type="button"
@@ -157,14 +162,71 @@ function PlannerCell({
     );
   }
 
+  const canAddMore = dishes.length < MAX_DISHES_PER_SLOT;
+
+  return (
+    <div
+      {...dragHandlers}
+      className={cn(
+        'flex min-h-[118px] flex-col rounded-2xl border-[1.5px] bg-white px-[13px] pb-2 pt-3 shadow-cell transition-[border-color,background-color] duration-[140ms]',
+        selected || isOver ? 'border-tomato' : 'border-[oklch(0.92_0.015_80)]',
+      )}
+    >
+      {dishes.map((dish, index) => (
+        <DishBlock
+          key={`${dish.recipe.id}-${index}`}
+          dish={dish}
+          isFirst={index === 0}
+          onDragStart={(event) => setDragData(event, { kind: 'dish', dayIndex, mealType, recipeId: dish.recipe.id })}
+          onRemove={() => onRemove(index)}
+          onChangeServings={(delta) => onChangeServings(index, delta)}
+          onViewRecipe={onViewRecipe}
+          disabled={disabled}
+        />
+      ))}
+      {canAddMore && (
+        <button
+          type="button"
+          onClick={onSelect}
+          disabled={disabled}
+          aria-pressed={selected}
+          className={cn(
+            'mt-auto inline-flex items-center gap-1 self-start rounded-full pt-2 font-mono text-[11px] font-medium transition-colors',
+            selected || isOver ? 'text-tomato' : 'text-[oklch(0.62_0.03_55)] hover:text-tomato',
+          )}
+        >
+          <Plus className="size-3" strokeWidth={2.4} />
+          {isOver ? p.dropHere : p.addDish}
+        </button>
+      )}
+    </div>
+  );
+}
+
+interface DishBlockProps {
+  dish: PlannedDish;
+  isFirst: boolean;
+  onDragStart: (event: React.DragEvent) => void;
+  onRemove: () => void;
+  onChangeServings: (delta: number) => void;
+  onViewRecipe: (recipe: Recipe) => void;
+  disabled?: boolean;
+}
+
+function DishBlock({ dish, isFirst, onDragStart, onRemove, onChangeServings, onViewRecipe, disabled }: DishBlockProps) {
+  const { t } = useTranslation();
+  const p = t.kitchen.plan;
+  const { recipe, servings } = dish;
+  const collection = primaryCollection(recipe);
+  const hue = collectionColor(collection);
+
   return (
     <div
       draggable={!disabled}
-      onDragStart={(event) => setDragData(event, { kind: 'slot', dayIndex, mealType })}
-      {...dragHandlers}
+      onDragStart={onDragStart}
       className={cn(
-        'group relative min-h-[118px] cursor-grab rounded-2xl border-[1.5px] bg-white px-[13px] py-3 shadow-cell transition-[transform,border-color] duration-[140ms] hover:-translate-y-[2px] active:cursor-grabbing',
-        isOver ? 'border-tomato' : 'border-[oklch(0.92_0.015_80)]',
+        'group/dish relative cursor-grab active:cursor-grabbing',
+        !isFirst && 'mt-[10px] border-t border-dashed border-line-soft pt-[10px]',
       )}
     >
       <div className="flex items-center gap-[7px] pr-5">
@@ -176,31 +238,34 @@ function PlannerCell({
       <button
         type="button"
         onClick={() => onViewRecipe(recipe)}
-        className="mt-[9px] block text-left font-display text-[17px] font-normal leading-[1.25] text-ink [text-wrap:pretty] hover:text-tomato"
+        className={cn(
+          'block text-left font-display font-normal leading-[1.25] text-ink [text-wrap:pretty] hover:text-tomato',
+          isFirst ? 'mt-[9px] text-[17px]' : 'mt-[6px] text-[15px]',
+        )}
       >
         {recipe.title}
       </button>
-      <div className="mt-2 flex items-center gap-2 font-mono text-xs font-medium text-[oklch(0.58_0.03_55)] tabular-nums">
-        <span>
+      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs font-medium text-[oklch(0.58_0.03_55)] tabular-nums">
+        <span className="whitespace-nowrap">
           {recipe.totalTime} {t.kitchen.library.minutes}
         </span>
         <span className="text-line">·</span>
-        <span className="inline-flex items-center gap-1">
+        <span className="inline-flex items-center gap-1 whitespace-nowrap">
           <button
             type="button"
             onClick={() => onChangeServings(-1)}
-            disabled={disabled || slot.servings <= 1}
-            className="grid size-4 place-items-center rounded-full opacity-0 transition-opacity hover:bg-line-soft group-hover:opacity-100 disabled:opacity-0"
+            disabled={disabled || servings <= 1}
+            className="grid size-4 place-items-center rounded-full opacity-0 transition-opacity hover:bg-line-soft group-hover/dish:opacity-100 disabled:opacity-0"
             aria-label="−"
           >
             <Minus className="size-3" />
           </button>
-          {slot.servings} {p.servingsShort}
+          {servings} {p.servingsShort}
           <button
             type="button"
             onClick={() => onChangeServings(1)}
-            disabled={disabled || slot.servings >= MAX_SLOT_SERVINGS}
-            className="grid size-4 place-items-center rounded-full opacity-0 transition-opacity hover:bg-line-soft group-hover:opacity-100 disabled:opacity-0"
+            disabled={disabled || servings >= MAX_SLOT_SERVINGS}
+            className="grid size-4 place-items-center rounded-full opacity-0 transition-opacity hover:bg-line-soft group-hover/dish:opacity-100 disabled:opacity-0"
             aria-label="+"
           >
             <Plus className="size-3" />
@@ -212,8 +277,11 @@ function PlannerCell({
         onClick={onRemove}
         disabled={disabled}
         title={p.remove}
-        aria-label={p.remove}
-        className="absolute right-2 top-2 grid size-6 place-items-center rounded-full text-ink-4 opacity-0 transition-opacity hover:bg-line-soft hover:text-tomato group-hover:opacity-100"
+        aria-label={`${p.remove}: ${recipe.title}`}
+        className={cn(
+          'absolute -right-[5px] grid size-6 place-items-center rounded-full text-ink-4 opacity-0 transition-opacity hover:bg-line-soft hover:text-tomato focus-visible:opacity-100 group-hover/dish:opacity-100',
+          isFirst ? '-top-1' : 'top-[6px]',
+        )}
       >
         <X className="size-3.5" />
       </button>

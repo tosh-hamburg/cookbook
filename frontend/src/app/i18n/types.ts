@@ -309,6 +309,9 @@ export interface Translations {
       hintPickSlot: string;
       hintSlotPicked: string;
       selectSlotToast: string;
+      addDish: string;
+      slotFull: string;
+      alreadyInSlot: string;
       breakfast: string;
       lunch: string;
       dinner: string;
